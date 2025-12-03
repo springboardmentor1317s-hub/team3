@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampusEventHub – Redefined</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+<style>
+*{
+    margin:0; padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+body{
+    background:#05010f;
+    overflow-x:hidden;
+}
+
+/* --- ANIMATED BACKGROUND --- */
+.bg-orbs{
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    pointer-events:none;
+    overflow:hidden;
+    z-index:-1;
+}
+
+.orb{
+    position:absolute;
+    width:350px;
+    height:350px;
+    border-radius:50%;
+    background:radial-gradient(circle,#ff00e6,#7500ff);
+    filter:blur(80px);
+    animation: float 12s ease-in-out infinite;
+    opacity:0.45;
+}
+
+.orb:nth-child(1){ top:10%; left:5%; animation-delay:0s; }
+.orb:nth-child(2){ top:50%; left:60%; animation-delay:3s; }
+.orb:nth-child(3){ top:20%; left:75%; animation-delay:6s; }
+
+@keyframes float{
+    0%,100%{ transform:translateY(0) translateX(0) scale(1); }
+    50%{ transform:translateY(-80px) translateX(50px) scale(1.2); }
+}
+
+/* --- NAVBAR --- */
+nav{
+    width:100%;
+    padding:25px 80px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    position:fixed;
+    top:0;
+    z-index:10;
+}
+
+nav .logo{
+    color:#fff;
+    font-size:30px;
+    font-weight:800;
+    letter-spacing:2px;
+    text-shadow:0 0 12px #c400ff;
+}
+
+nav ul{
+    display:flex;
+    gap:40px;
+}
+
+nav ul li{ list-style:none; }
+
+nav ul li a{
+    text-decoration:none;
+    color:#fff;
+    font-size:16px;
+    position:relative;
+}
+
+nav ul li a::after{
+    content:"";
+    width:0%;
+    height:2px;
+    background:#c400ff;
+    position:absolute;
+    left:0; bottom:-5px;
+    transition:0.4s;
+}
+
+nav ul li a:hover::after{
+    width:100%;
+}
+
+/* --- HERO SECTION --- */
+.hero{
+    text-align:center;
+    margin-top:150px;
+    padding:60px 40px;
+}
+
+.hero h1{
+    font-size:70px;
+    color:white;
+    font-weight:800;
+    line-height:85px;
+    letter-spacing:2px;
+    animation:titleReveal 2s ease forwards;
+    opacity:0;
+}
+
+@keyframes titleReveal{
+    0%{opacity:0; transform:translateY(40px);}
+    100%{opacity:1; transform:translateY(0);}
+}
+
+.hero p{
+    font-size:22px;
+    margin-top:15px;
+    color:#e4caff;
+    opacity:0;
+    animation:fadeIn 2s ease forwards 1s;
+}
+
+@keyframes fadeIn{
+    100%{opacity:1;}
+}
+
+/* --- MAGNETIC GLOW BUTTON --- */
+.btn{
+    display:inline-block;
+    margin-top:35px;
+    padding:15px 45px;
+    background:transparent;
+    border:2px solid #c400ff;
+    color:#ffffff;
+    font-size:18px;
+    border-radius:40px;
+    position:relative;
+    overflow:hidden;
+    transition:0.4s;
+    cursor:pointer;
+    box-shadow:0 0 15px #c400ff;
+}
+
+.btn:hover{
+    background:#c400ff;
+    transform:scale(1.1);
+    box-shadow:0 0 30px #c400ff;
+}
+
+/* --- FLOATING EVENT CARDS --- */
+.event-section{
+    margin-top:90px;
+    display:flex;
+    justify-content:center;
+    gap:50px;
+    padding-bottom:100px;
+}
+
+.event-card{
+    width:300px;
+    height:320px;
+    background:rgba(255,255,255,0.07);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:25px;
+    padding:25px;
+    color:white;
+    backdrop-filter:blur(10px);
+    box-shadow:0 0 18px rgba(196,0,255,0.4);
+    animation:wave 6s ease-in-out infinite;
+    transition:0.4s;
+}
+
+.event-card:nth-child(2){ animation-delay:1.5s; }
+.event-card:nth-child(3){ animation-delay:3s; }
+
+@keyframes wave{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-25px); }
+}
+
+.event-card h3{
+    font-size:24px;
+    margin-bottom:10px;
+}
+
+.event-card p{
+    font-size:15px;
+    opacity:0.8;
+}
+
+.event-card a{
+    display:inline-block;
+    margin-top:15px;
+    color:#ffb7ff;
+    font-size:15px;
+    text-decoration:none;
+    transition:0.3s;
+}
+
+.event-card a:hover{
+    color:white;
+    text-shadow:0 0 10px #ff00e6;
+}
+
+</style>
+</head>
+
+<body>
+
+<!------------ Animated Orbs ------------>
+<div class="bg-orbs">
+    <div class="orb"></div>
+    <div class="orb"></div>
+    <div class="orb"></div>
+</div>
+
+<!------------ Navbar ------------>
+<nav>
+    <div class="logo">CampusEventHub</div>
+    <ul>
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Events</a></li>
+        <li><a href="#">Register</a></li>
+        <li><a href="#">Login</a></li>
+    </ul>
+</nav>
+
+<!------------ Hero ------------>
+<section class="hero">
+    <h1>The Future of Inter-College<br>Event Discovery</h1>
+    <p>Experience events like never before — Hackathons, Fests, Competitions & more.</p>
+    <a href="#" class="btn">Explore Events</a>
+</section>
+
+<!------------ Floating Event Cards ------------>
+<div class="event-section">
+    <div class="event-card">
+        <h3>Hackathon X</h3>
+        <p>24 Hours. Infinite Ideas. Compete with the sharpest minds.</p>
+        <a href="#">Learn More →</a>
+    </div>
+
+    <div class="event-card">
+        <h3>Sports Meet</h3>
+        <p>Unleash your spirit. Cricket, Football, Athletics & more.</p>
+        <a href="#">Join Now →</a>
+    </div>
+
+    <div class="event-card">
+        <h3>Cultural Fest</h3>
+        <p>Dance • Drama • Music • Art<br>Where creativity takes the stage.</p>
+        <a href="#">Explore →</a>
+    </div>
+</div>
+
+</body>
+</html>
