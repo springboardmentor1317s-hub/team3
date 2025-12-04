@@ -208,7 +208,6 @@ nav ul li a:hover::after{
     color:white;
     text-shadow:0 0 10px #ff00e6;
 }
-
 </style>
 </head>
 
@@ -225,10 +224,12 @@ nav ul li a:hover::after{
 <nav>
     <div class="logo">CampusEventHub</div>
     <ul>
-        <li><a href="#">Home</a></li>
-        <li><a href="#">Events</a></li>
-        <li><a href="#">Register</a></li>
-        <li><a href="#">Login</a></li>
+        <li><a href="index.html" style="color:#ffb7ff;">Home</a></li>
+        <li><a href="events.html">Events</a></li>
+
+        <!-- Working links -->
+        <li><a href="register.html">Register</a></li>
+        <li><a href="login.html">Login</a></li>
     </ul>
 </nav>
 
@@ -236,7 +237,9 @@ nav ul li a:hover::after{
 <section class="hero">
     <h1>The Future of Inter-College<br>Event Discovery</h1>
     <p>Experience events like never before — Hackathons, Fests, Competitions & more.</p>
-    <a href="#" class="btn">Explore Events</a>
+
+    <!-- ⭐ FIXED: Explore Events now correctly redirects -->
+    <a href="events.html" class="btn">Explore Events</a>
 </section>
 
 <!------------ Floating Event Cards ------------>
