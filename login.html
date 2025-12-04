@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login – CampusEventHub</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+* { box-sizing: border-box; }
+body { 
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0f0720 0%, #1a0f3f 50%, #0f0720 100%);
+    overflow-x: hidden;
+}
+
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(99,102,241,0.25), rgba(168,85,247,0.1));
+    filter: blur(100px);
+    animation: float 16s ease-in-out infinite;
+}
+
+.orb-1 { width: 400px; height: 400px; top: 5%; left: -10%; animation-delay: 0s; }
+.orb-2 { width: 350px; height: 350px; top: 50%; right: -5%; animation-delay: 5s; }
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-80px) scale(1.1); }
+}
+
+.form-card {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 24px;
+    padding: 50px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 60px rgba(99, 102, 241, 0.1);
+    width: 100%;
+    max-width: 420px;
+}
+
+.form-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    color: #d1d5db;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 15px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.form-input::placeholder {
+    color: rgba(209, 213, 219, 0.5);
+}
+
+.form-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(168, 85, 247, 0.6);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-button {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 24px;
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+}
+
+.form-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px rgba(99, 102, 241, 0.4);
+}
+
+.form-button:active {
+    transform: translateY(0);
+}
+
+.form-link {
+    text-align: center;
+    margin-top: 20px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.form-link a {
+    color: #6366f1;
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.3s ease;
+}
+
+.form-link a:hover {
+    color: #a855f7;
+}
+
+nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    padding: 20px 80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    background: rgba(15, 7, 32, 0.7);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+nav ul {
+    display: flex;
+    gap: 45px;
+    list-style: none;
+}
+
+nav a {
+    color: #e5e7eb;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    transition: 0.3s ease;
+}
+
+nav a:hover {
+    color: #ffffff;
+}
+</style>
+</head>
+
+<body class="overflow-x-hidden">
+
+<!-- Animated Background -->
+<div class="fixed inset-0 -z-10">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+</div>
+
+<!-- Navbar -->
+<nav>
+    <div class="logo">CampusEventHub</div>
+    <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="event.html">Events</a></li>
+        <li><a href="register.html">Register</a></li>
+        <li><a href="login.html" style="color: #a855f7;">Login</a></li>
+    </ul>
+</nav>
+
+<!-- LOGIN CARD -->
+<div class="flex justify-center items-center h-screen">
+    <div class="form-card">
+        <h2 class="form-title">Welcome Back</h2>
+
+        <form class="flex flex-col">
+            <div class="form-group">
+                <label class="form-label">Email Address</label>
+                <input type="email" class="form-input" placeholder="your@email.com">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-input" placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="form-button">Sign In</button>
+
+            <p class="form-link">
+                Don't have an account? 
+                <a href="register.html">Create one</a>
+            </p>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
