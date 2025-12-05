@@ -6,6 +6,7 @@
 <title>Login – CampusEventHub</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="auth.js"></script>
 
 <style>
 * { box-sizing: border-box; }
@@ -169,6 +170,70 @@ nav a {
 nav a:hover {
     color: #ffffff;
 }
+
+/* Role selector styles */
+.role-selector {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    justify-content: center;
+}
+
+.role-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid rgba(99, 102, 241, 0.3);
+    background: transparent;
+    color: #d1d5db;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.role-btn:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    color: #ffffff;
+}
+
+.role-btn.active {
+    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    border-color: transparent;
+    color: #ffffff;
+}
+
+.error-message {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+.success-message {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.5);
+    color: #86efac;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    display: none;
+}
+
+.success-message.show {
+    display: block;
+}
 </style>
 </head>
 
@@ -196,15 +261,23 @@ nav a:hover {
     <div class="form-card">
         <h2 class="form-title">Welcome Back</h2>
 
-        <form class="flex flex-col">
+        <div class="role-selector">
+            <button type="button" class="role-btn active" data-role="student">Student</button>
+            <button type="button" class="role-btn" data-role="admin">Admin</button>
+        </div>
+
+        <div class="error-message" id="errorMsg"></div>
+        <div class="success-message" id="successMsg"></div>
+
+        <form class="flex flex-col" id="loginForm">
             <div class="form-group">
                 <label class="form-label">Email Address</label>
-                <input type="email" class="form-input" placeholder="your@email.com">
+                <input type="email" class="form-input" id="email" placeholder="your@email.com" required>
             </div>
 
             <div class="form-group">
                 <label class="form-label">Password</label>
-                <input type="password" class="form-input" placeholder="••••••••">
+                <input type="password" class="form-input" id="password" placeholder="••••••••" required>
             </div>
 
             <button type="submit" class="form-button">Sign In</button>
@@ -214,8 +287,78 @@ nav a:hover {
                 <a href="register.html">Create one</a>
             </p>
         </form>
+
+        <!-- Demo credentials hint -->
+        <p style="text-align: center; font-size: 12px; color: #9ca3af; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(99, 102, 241, 0.2);">
+            Demo: admin@campus.com / student@campus.com (pass: admin123 / student123)
+        </p>
     </div>
 </div>
+
+<script>
+let selectedRole = 'student';
+
+// Role selection
+document.querySelectorAll('.role-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        selectedRole = this.dataset.role;
+    });
+});
+
+// Login form submission
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const errorMsg = document.getElementById('errorMsg');
+    const successMsg = document.getElementById('successMsg');
+    
+    // Clear previous messages
+    errorMsg.classList.remove('show');
+    successMsg.classList.remove('show');
+    
+    // Validate inputs
+    if (!email || !password) {
+        showError('Please fill in all fields');
+        return;
+    }
+    
+    // Attempt login
+    const result = loginUser(email, password, selectedRole);
+    
+    if (result.success) {
+        showSuccess('Login successful! Redirecting...');
+        setTimeout(() => {
+            redirectToDashboard(result.userType);
+        }, 1500);
+    } else {
+        showError(result.message);
+    }
+});
+
+function showError(message) {
+    const errorMsg = document.getElementById('errorMsg');
+    errorMsg.textContent = message;
+    errorMsg.classList.add('show');
+}
+
+function showSuccess(message) {
+    const successMsg = document.getElementById('successMsg');
+    successMsg.textContent = message;
+    successMsg.classList.add('show');
+}
+
+// Create demo users on first visit
+window.addEventListener('load', function() {
+    if (!localStorage.getItem('demoUsersCreated')) {
+        createDemoUsers();
+        localStorage.setItem('demoUsersCreated', 'true');
+    }
+});
+</script>
 
 </body>
 </html>
