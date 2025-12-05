@@ -192,5 +192,49 @@ function createDemoUsers() {
     console.log('Demo users created. Admin: admin@campus.com (pass: admin123), Student: student@campus.com (pass: student123)');
 }
 
+// Initialize password visibility toggles on pages
+function initPasswordToggles() {
+    const lockedSvg = `
+        <svg class="svg-anim" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="8" width="18" height="13" rx="2"></rect>
+            <path d="M7 8V6a5 5 0 0110 0v2"></path>
+        </svg>`;
+    const unlockedSvg = `
+        <svg class="svg-anim" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="8" width="18" height="13" rx="2"></rect>
+            <path d="M16 8V6a4 4 0 10-8 0v2"></path>
+        </svg>`;
+
+    document.querySelectorAll('.pw-toggle').forEach(btn => {
+        if (!btn.dataset.state) {
+            btn.dataset.state = 'locked';
+            btn.innerHTML = lockedSvg;
+        }
+
+        btn.addEventListener('click', function() {
+            const targetId = this.dataset.target;
+            const input = document.getElementById(targetId);
+            if (!input) return;
+            const state = this.dataset.state;
+            if (state === 'locked') {
+                input.type = 'text';
+                this.innerHTML = unlockedSvg;
+                this.dataset.state = 'unlocked';
+                this.classList.add('unlocked');
+                this.setAttribute('aria-label', this.getAttribute('title') ? 'Hide password' : 'Hide');
+                const svg = this.querySelector('.svg-anim');
+                if (svg) svg.style.transform = 'rotate(-12deg) scale(1.05)';
+                setTimeout(() => { if (svg) svg.style.transform = ''; }, 260);
+            } else {
+                input.type = 'password';
+                this.innerHTML = lockedSvg;
+                this.dataset.state = 'locked';
+                this.classList.remove('unlocked');
+                this.setAttribute('aria-label', this.getAttribute('title') ? 'Show password' : 'Show');
+            }
+        });
+    });
+}
+
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', initializeAuth);
