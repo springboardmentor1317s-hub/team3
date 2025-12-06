@@ -1,88 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login – CampusEventHub</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CampusEventHub – Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-<style>
-body { font-family:'Poppins',sans-serif; background:#05010f; }
-
-/* Floating purple orbs */
-.orb{
-    position:absolute;
-    width:350px; height:350px;
-    border-radius:50%;
-    background:radial-gradient(circle,#ff00e6,#7500ff);
-    filter:blur(90px);
-    opacity:0.45;
-    animation:float 10s ease-in-out infinite;
-}
-@keyframes float {
-    0%,100% { transform:translateY(0px); }
-    50% { transform:translateY(-60px); }
-}
-</style>
+  <style>
+    /* Floating animation */
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+      100% { transform: translateY(0px); }
+    }
+    .floating {
+      animation: float 3s ease-in-out infinite;
+    }
+  </style>
 </head>
 
-<body class="overflow-x-hidden">
+<body class="min-h-screen flex items-center justify-center" style="background:#F8FAFC;">
 
-<!-- Animated Background -->
-<div class="fixed inset-0 -z-10">
-    <div class="orb top-10 left-5"></div>
-    <div class="orb top-1/2 left-1/2"></div>
-    <div class="orb top-20 right-10"></div>
+  <!-- Top Right Home Button -->
+<div class="absolute top-6 right-6">
+    <a href="index.html"
+       class="px-5 py-2 rounded-xl text-white font-semibold shadow-md"
+       style="background:#FF4EB8;">
+       Home
+    </a>
 </div>
+  
 
-<!-- Navbar -->
-<nav class="fixed top-0 w-full flex justify-between px-20 py-6 z-20">
-    <h1 class="text-white text-3xl font-extrabold tracking-wider drop-shadow-[0_0_12px_#c400ff]">CampusEventHub</h1>
-    <ul class="flex gap-10 text-white">
-        <li><a href="index.html" class="hover:text-pink-400">Home</a></li>
-        <li><a href="#" class="hover:text-pink-400">Events</a></li>
-        <li><a href="register.html" class="hover:text-pink-400">Register</a></li>
-        <li><a href="#" class="hover:text-pink-400">Login</a></li>
-    </ul>
-</nav>
+  <div class="w-full max-w-md mx-auto p-6">
+    
+    <!-- Card -->
+    <div class="rounded-2xl shadow-lg p-8 floating" style="background:#F5EEDF;">
+      
+      <!-- Toggle Buttons -->
+      <div class="flex mb-8">
+        <button id="studentBtn"
+          class="w-1/2 py-3 text-center font-semibold rounded-l-xl border"
+          style="background:#FF4EB8; color:white;">
+          Student Login
+        </button>
 
-<!-- LOGIN CARD -->
-<div class="flex justify-center items-center h-screen pt-20">
+        <button id="adminBtn"
+          class="w-1/2 py-3 text-center font-semibold rounded-r-xl border"
+          style="background:#E5D5C8; color:#1A1A1A;">
+          Admin Login
+        </button>
+      </div>
 
-    <div class="backdrop-blur-xl bg-white/10 border border-white/20 shadow-[0_0_25px_#c400ff] 
-                w-96 p-10 rounded-2xl">
-        
-        <h2 class="text-white text-4xl font-bold text-center mb-6">Login</h2>
+      <!-- Student Login Form -->
+      <form id="studentForm" class="space-y-4">
+        <div>
+          <label class="block font-semibold">Email</label>
+          <input type="email" class="w-full p-3 rounded-xl border" placeholder="Enter your email" />
+        </div>
 
-        <form class="flex flex-col gap-5">
+        <div>
+          <label class="block font-semibold">Password</label>
+          <input type="password" class="w-full p-3 rounded-xl border" placeholder="Enter your password" />
+        </div>
 
-            <div>
-                <label class="text-pink-200">Email</label>
-                <input type="email" class="w-full p-3 mt-1 rounded-xl bg-white/10 text-white 
-                       placeholder-pink-200 border border-pink-400/40 focus:outline-none">
-            </div>
+        <button
+          class="w-full py-3 rounded-xl font-semibold"
+          style="background:#60D394; color:white;">
+          Login
+        </button>
 
-            <div>
-                <label class="text-pink-200">Password</label>
-                <input type="password" class="w-full p-3 mt-1 rounded-xl bg-white/10 text-white 
-                       border border-pink-400/40 focus:outline-none">
-            </div>
+        <!-- Register option only for students -->
+        <p class="text-center mt-4">
+          Not registered? 
+          <a href="register.html" style="color:#FF4EB8;" class="font-semibold">Create an account</a>
+        </p>
+      </form>
 
-            <button class="w-full mt-4 p-3 rounded-full border-2 border-pink-500 text-white
-                           hover:bg-pink-500 transition shadow-[0_0_20px_#c400ff]">
-                Login
-            </button>
+      <!-- Admin Login Form (Hidden by default) -->
+      <form id="adminForm" class="space-y-4 hidden">
+        <div>
+          <label class="block font-semibold">Admin Email</label>
+          <input type="email" class="w-full p-3 rounded-xl border" placeholder="Enter admin email" />
+        </div>
 
-            <p class="text-center text-pink-200 mt-3">
-                Don't have an account? 
-                <a href="register.html" class="text-pink-400 underline">Register</a>
-            </p>
-        </form>
+        <div>
+          <label class="block font-semibold">Password</label>
+          <input type="password" class="w-full p-3 rounded-xl border" placeholder="Enter admin password" />
+        </div>
+
+        <button
+          class="w-full py-3 rounded-xl font-semibold"
+          style="background:#FF4EB8; color:white;">
+          Login as Admin
+        </button>
+
+        <!-- ❌ No register link for admin -->
+      </form>
 
     </div>
+  </div>
 
-</div>
+  <script>
+    const studentBtn = document.getElementById("studentBtn");
+    const adminBtn = document.getElementById("adminBtn");
+    const studentForm = document.getElementById("studentForm");
+    const adminForm = document.getElementById("adminForm");
+
+    // Switch to Admin
+    adminBtn.addEventListener("click", () => {
+      adminForm.classList.remove("hidden");
+      studentForm.classList.add("hidden");
+
+      adminBtn.style.background = "#FF4EB8";
+      adminBtn.style.color = "white";
+
+      studentBtn.style.background = "#E5D5C8";
+      studentBtn.style.color = "#1A1A1A";
+    });
+
+    // Switch to Student
+    studentBtn.addEventListener("click", () => {
+      studentForm.classList.remove("hidden");
+      adminForm.classList.add("hidden");
+
+      studentBtn.style.background = "#FF4EB8";
+      studentBtn.style.color = "white";
+
+      adminBtn.style.background = "#E5D5C8";
+      adminBtn.style.color = "#1A1A1A";
+    });
+  </script>
 
 </body>
 </html>
