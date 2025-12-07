@@ -1,83 +1,117 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import '../styles/register.css'
-const Register = () => {
+// src/pages/Register.jsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerViaApi, registerUserLocal } from "../utils/auth";
+import "../styles/original.css";
+
+export default function Register() {
+  const [role, setRole] = useState("student");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [msg, setMsg] = useState({ type: "", text: "" });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // UI password toggle init if needed
+  }, []);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMsg({ type: "", text: "" });
+
+    if (!fullName || !email || !password || !confirmPassword) {
+      setMsg({ type: "error", text: "Please fill in all fields" });
+      return;
+    }
+    if (password !== confirmPassword) {
+      setMsg({ type: "error", text: "Passwords do not match" });
+      return;
+    }
+
+    // Try backend register first
+    const payload = { name: fullName.trim(), email: email.trim(), password, college: "", role };
+    const res = await registerViaApi(payload);
+    if (res.success) {
+      setMsg({ type: "success", text: res.message || "Registration successful. Redirecting to login..." });
+      setTimeout(() => navigate("/login"), 1200);
+      return;
+    }
+
+    // Fallback to local register if API failed
+    const fallback = registerUserLocal(fullName.trim(), email.trim(), password, role);
+    if (fallback.success) {
+      setMsg({ type: "success", text: "Registered (demo). Redirecting to login..." });
+      setTimeout(() => navigate("/login"), 900);
+      return;
+    }
+
+    setMsg({ type: "error", text: res.message || fallback.message || "Registration failed" });
+  }
+
   return (
-    <div className="page-content">
-    <div className="overflow-x-hidden">
-      {/* Animated Background */}
-      <div className="fixed inset-0 -z-10">
-        <div className="orb orb-1"></div>
-        <div className="orb orb-2"></div>
+    <div className="register-page">
+      <div className="bg-orbs">
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
       </div>
 
-      {/* Navbar */}
-      <nav className="fixed top-0 w-full px-20 py-5 flex justify-between items-center backdrop-blur-xl bg-[#0f0720b3] border-b border-indigo-400/30 z-50">
-        <h1 className="text-2xl font-bold font-[Syne] bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent">
-          CampusEventHub
-        </h1>
-
-        <ul className="flex gap-12">
-          <li>
-            <Link to="/" className="hover:text-white text-gray-300 text-sm font-medium">
-              Home
-            </Link>
-          </li>
-          <li>
-            <Link to="/events" className="hover:text-white text-gray-300 text-sm font-medium">
-              Events
-            </Link>
-          </li>
-          <li>
-            <Link to="/register" className="text-purple-400 font-medium text-sm">
-              Register
-            </Link>
-          </li>
-          <li>
-            <Link to="/login" className="hover:text-white text-gray-300 text-sm font-medium">
-              Login
-            </Link>
-          </li>
+      <nav>
+        <div className="logo">CampusEventHub</div>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="/events">Events</a></li>
+          <li><a href="/register" style={{ color: "#a855f7" }}>Register</a></li>
+          <li><a href="/login">Login</a></li>
         </ul>
       </nav>
 
-      {/* REGISTER CARD */}
-      <div className="flex justify-center items-center min-h-screen px-4 pt-28">
+      <div className="flex justify-center items-center min-h-screen py-20">
         <div className="form-card">
           <h2 className="form-title">Join Us</h2>
 
-          <form className="flex flex-col">
+          <div className="role-selector">
+            <button type="button" className={`role-btn ${role === "student" ? "active" : ""}`} onClick={() => setRole("student")}>Student</button>
+            <button type="button" className={`role-btn ${role === "admin" ? "active" : ""}`} onClick={() => setRole("admin")}>Admin</button>
+          </div>
+
+          {msg.type === "error" && <div className="error-message show">{msg.text}</div>}
+          {msg.type === "success" && <div className="success-message show">{msg.text}</div>}
+
+          <form className="flex flex-col" id="registerForm" onSubmit={handleSubmit}>
             <div className="form-group">
               <label className="form-label">Full Name</label>
-              <input type="text" className="form-input" placeholder="Your name" />
+              <input className="form-input" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" required />
             </div>
 
             <div className="form-group">
               <label className="form-label">Email Address</label>
-              <input type="email" className="form-input" placeholder="you@email.com" />
+              <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" required />
             </div>
 
-            <div className="form-group">
+            <div className="form-group pw-field">
               <label className="form-label">Password</label>
-              <input type="password" className="form-input" placeholder="••••••••" />
+              <div style={{ position: "relative" }}>
+                <input className="form-input" id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" minLength={6} required />
+                <button type="button" className="pw-toggle" data-target="password" aria-label="Show password" title="Show password" />
+              </div>
             </div>
 
-            <button type="submit" className="form-button">
-              Create Account
-            </button>
+            <div className="form-group pw-field">
+              <label className="form-label">Confirm Password</label>
+              <div style={{ position: "relative" }}>
+                <input className="form-input" id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" minLength={6} required />
+                <button type="button" className="pw-toggle" data-target="confirmPassword" aria-label="Show confirm password" title="Show confirm password" />
+              </div>
+            </div>
 
-            <p className="form-link">
-              Already have an account?{" "}
-              <Link to="/login" className="text-indigo-400 hover:text-purple-400 font-semibold">
-                Sign in
-              </Link>
-            </p>
+            <button type="submit" className="form-button">Create Account</button>
+
+            <p className="form-link">Already have an account? <a href="/login">Sign in</a></p>
           </form>
         </div>
       </div>
     </div>
-    </div>
   );
-};
-
-export default Register;
+}

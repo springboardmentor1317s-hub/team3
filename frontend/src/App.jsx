@@ -1,22 +1,22 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-// Pages
+import React from "react";
+import { Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
+import Event from "./pages/Event";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Events from "./pages/Events";
+import StudentDashboard from "./pages/StudentDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
-const App = () => {
+export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/events" element={<Events />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/events" element={<Event />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/student-dashboard" element={<StudentDashboard />} />
+      <Route path="/admin-dashboard" element={<AdminDashboard />} />
+      {/* add other routes as needed */}
+    </Routes>
   );
-};
-
-export default App;
+}
