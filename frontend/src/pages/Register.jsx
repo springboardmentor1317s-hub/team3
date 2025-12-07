@@ -1,7 +1,7 @@
 // src/pages/Register.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { registerUser, initPasswordToggles } from "../utils/auth";
+import { registerViaApi, registerUserLocal } from "../utils/auth";
 import "../styles/original.css";
 
 export default function Register() {
@@ -14,47 +14,40 @@ export default function Register() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (typeof initPasswordToggles === "function") initPasswordToggles();
+    // UI password toggle init if needed
   }, []);
 
-  function handleRole(r) {
-    setRole(r);
-    setMsg({ type: "", text: "" });
-  }
-
-  function showError(message) {
-    setMsg({ type: "error", text: message });
-  }
-
-  function showSuccess(message) {
-    setMsg({ type: "success", text: message });
-  }
-
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setMsg({ type: "", text: "" });
 
     if (!fullName || !email || !password || !confirmPassword) {
-      showError("Please fill in all fields");
+      setMsg({ type: "error", text: "Please fill in all fields" });
       return;
     }
     if (password !== confirmPassword) {
-      showError("Passwords do not match");
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showError("Please enter a valid email address");
+      setMsg({ type: "error", text: "Passwords do not match" });
       return;
     }
 
-    const result = registerUser(fullName.trim(), email.trim(), password, role);
-    if (result.success) {
-      showSuccess("Registration successful! Redirecting to login...");
-      setTimeout(() => navigate("/login"), 1500);
-    } else {
-      showError(result.message);
+    // Try backend register first
+    const payload = { name: fullName.trim(), email: email.trim(), password, college: "", role };
+    const res = await registerViaApi(payload);
+    if (res.success) {
+      setMsg({ type: "success", text: res.message || "Registration successful. Redirecting to login..." });
+      setTimeout(() => navigate("/login"), 1200);
+      return;
     }
+
+    // Fallback to local register if API failed
+    const fallback = registerUserLocal(fullName.trim(), email.trim(), password, role);
+    if (fallback.success) {
+      setMsg({ type: "success", text: "Registered (demo). Redirecting to login..." });
+      setTimeout(() => navigate("/login"), 900);
+      return;
+    }
+
+    setMsg({ type: "error", text: res.message || fallback.message || "Registration failed" });
   }
 
   return (
@@ -79,8 +72,8 @@ export default function Register() {
           <h2 className="form-title">Join Us</h2>
 
           <div className="role-selector">
-            <button type="button" className={`role-btn ${role === "student" ? "active" : ""}`} onClick={() => handleRole("student")}>Student</button>
-            <button type="button" className={`role-btn ${role === "admin" ? "active" : ""}`} onClick={() => handleRole("admin")}>Admin</button>
+            <button type="button" className={`role-btn ${role === "student" ? "active" : ""}`} onClick={() => setRole("student")}>Student</button>
+            <button type="button" className={`role-btn ${role === "admin" ? "active" : ""}`} onClick={() => setRole("admin")}>Admin</button>
           </div>
 
           {msg.type === "error" && <div className="error-message show">{msg.text}</div>}

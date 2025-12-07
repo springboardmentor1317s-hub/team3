@@ -1,7 +1,7 @@
 // src/pages/Login.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser, initPasswordToggles } from "../utils/auth";
+import { loginViaApi, loginUserLocal, initPasswordToggles } from "../utils/auth";
 import "../styles/original.css";
 
 export default function Login() {
@@ -12,7 +12,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // initialize password toggles (port of original UI script)
+    // initialize password toggles (UI helper)
     if (typeof initPasswordToggles === "function") initPasswordToggles();
   }, []);
 
@@ -21,22 +21,38 @@ export default function Login() {
     setMsg({ type: "", text: "" });
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setMsg({ type: "", text: "" });
 
-    const res = loginUser(email.trim(), password, role);
-    if (!res.success) {
-      setMsg({ type: "error", text: res.message });
+    // Try backend login first
+    const payload = { email: email.trim(), password, role };
+    const res = await loginViaApi(payload);
+    if (res.success) {
+      setMsg({ type: "success", text: res.message || "Login successful" });
+      const cur = sessionStorage.getItem("currentUser");
+      const u = cur ? JSON.parse(cur) : null;
+      setTimeout(() => {
+        if (u && (u.userType === "admin" || u.role === "admin")) navigate("/admin-dashboard");
+        else navigate("/student-dashboard");
+      }, 500);
       return;
     }
 
-    setMsg({ type: "success", text: res.message });
-    // redirect to dashboard — preserve original redirect behavior
-    setTimeout(() => {
-      if (res.userType === "admin") navigate("/admin-dashboard");
-      else navigate("/student-dashboard");
-    }, 600);
+    // Fallback to local demo login if API failed
+    const fallback = loginUserLocal(email.trim(), password, role);
+    if (fallback.success) {
+      setMsg({ type: "success", text: "Logged in (demo mode)" });
+      setTimeout(() => {
+        const u = JSON.parse(sessionStorage.getItem("currentUser"));
+        if (u && u.userType === "admin") navigate("/admin-dashboard");
+        else navigate("/student-dashboard");
+      }, 400);
+      return;
+    }
+
+    // Show API error if present, else fallback error
+    setMsg({ type: "error", text: res.message || fallback.message || "Login failed" });
   }
 
   return (
@@ -90,7 +106,7 @@ export default function Login() {
           </form>
 
           <p style={{ textAlign: "center", fontSize: 12, color: "#9ca3af", marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(99,102,241,0.2)" }}>
-            Demo: admin@campus.com / student@campus.com (pass: admin123 / student123)
+            Demo fallback: admin@campus.com / student@campus.com (pass: admin123 / student123)
           </p>
         </div>
       </div>

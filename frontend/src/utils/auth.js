@@ -1,8 +1,11 @@
 // src/utils/auth.js
-// Ported from original auth.js (converted to ES module + sessionStorage)
-// NOTE: This is intentionally a thin port — keeps behavior, function names and demo data.
+// Unified auth utility: demo/local functions + api-backed functions + aliases
+import { api } from "../services/api.js";
 
-function initializeAuth() {
+/* -------------------------
+   Local demo storage helpers
+   ------------------------- */
+function initializeAuthLocal() {
   if (!sessionStorage.getItem("users")) {
     sessionStorage.setItem("users", JSON.stringify([]));
   }
@@ -11,8 +14,8 @@ function initializeAuth() {
   }
 }
 
-export function registerUser(fullName, email, password, userType) {
-  initializeAuth();
+export function registerUserLocal(fullName, email, password, userType = "student") {
+  initializeAuthLocal();
   let users = JSON.parse(sessionStorage.getItem("users")) || [];
 
   if (users.find((u) => u.email === email)) {
@@ -23,7 +26,6 @@ export function registerUser(fullName, email, password, userType) {
     id: Date.now(),
     fullName,
     email,
-    // keep same weak encoding as original for parity; backend should replace with hashing later
     password: btoa(password),
     userType,
     registeredDate: new Date().toISOString(),
@@ -31,12 +33,11 @@ export function registerUser(fullName, email, password, userType) {
 
   users.push(newUser);
   sessionStorage.setItem("users", JSON.stringify(users));
-
   return { success: true, message: "Registration successful! Please login.", user: newUser };
 }
 
-export function loginUser(email, password, userType) {
-  initializeAuth();
+export function loginUserLocal(email, password, userType = "student") {
+  initializeAuthLocal();
   let users = JSON.parse(sessionStorage.getItem("users")) || [];
 
   const user = users.find((u) => u.email === email && u.userType === userType);
@@ -54,123 +55,126 @@ export function loginUser(email, password, userType) {
     loginTime: new Date().toISOString(),
   };
 
-  // NOTE: using sessionStorage instead of localStorage (safer for this context)
   sessionStorage.setItem("currentUser", JSON.stringify(sessionUser));
+  sessionStorage.setItem("token", `demo-${Date.now()}`);
 
-  return { success: true, message: "Login successful!", user, userType: user.userType };
+  return { success: true, message: "Login successful!", user: sessionUser, token: sessionStorage.getItem("token") };
 }
 
+/* -------------------------
+   API-backed helpers
+   ------------------------- */
+export async function registerViaApi(payload) {
+  try {
+    const res = await api.post("/auth/register", payload);
+    return { success: true, message: res.message || "Registered (server)", raw: res };
+  } catch (err) {
+    const message = err?.data?.message || (err?.data && JSON.stringify(err.data)) || err.message || "Registration failed";
+    return { success: false, message };
+  }
+}
+
+export async function loginViaApi(payload) {
+  try {
+    const res = await api.post("/auth/login", payload);
+    if (res.token) {
+      sessionStorage.setItem("token", res.token);
+    }
+    if (res.user) {
+      const normalized = {
+        id: res.user.id || res.user._id || res.user.ID || res.user.id,
+        fullName: res.user.name || res.user.fullName || res.user.email,
+        email: res.user.email || "",
+        userType: res.user.role || res.user.userType || "student"
+      };
+      sessionStorage.setItem("currentUser", JSON.stringify(normalized));
+    }
+    return { success: true, message: res.message || "Login successful", raw: res };
+  } catch (err) {
+    const message = err?.data?.message || (err?.data && JSON.stringify(err.data)) || err.message || "Login failed";
+    return { success: false, message, raw: err?.data || err };
+  }
+}
+
+/* -------------------------
+   initPasswordToggles
+   (UI helper used by Login/Register pages)
+   ------------------------- */
+export function initPasswordToggles() {
+  // svg icons used in original implementation
+  const lockedSvg = `<svg class="svg-anim" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M7 8V6a5 5 0 0110 0v2"></path></svg>`;
+  const unlockedSvg = `<svg class="svg-anim" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M16 8V6a4 4 0 10-8 0v2"></path></svg>`;
+
+  // Find all toggle buttons
+  const toggles = document.querySelectorAll(".pw-toggle");
+  toggles.forEach((btn) => {
+    // if button not initialized, set initial icon and state
+    if (!btn.dataset.state) {
+      btn.dataset.state = "locked";
+      btn.innerHTML = lockedSvg;
+      btn.setAttribute("aria-label", btn.getAttribute("title") || "Show password");
+    }
+
+    // ensure click handler only added once
+    if (!btn._pwToggleInit) {
+      btn.addEventListener("click", function () {
+        const targetId = this.dataset.target;
+        const input = document.getElementById(targetId);
+        if (!input) return;
+        const state = this.dataset.state;
+        const svg = this.querySelector(".svg-anim");
+
+        if (state === "locked") {
+          input.type = "text";
+          this.innerHTML = unlockedSvg;
+          this.dataset.state = "unlocked";
+          this.classList.add("unlocked");
+          this.setAttribute("aria-label", "Hide password");
+          if (svg) svg.style.transform = "rotate(-12deg) scale(1.05)";
+          setTimeout(() => { if (svg) svg.style.transform = ""; }, 260);
+        } else {
+          input.type = "password";
+          this.innerHTML = lockedSvg;
+          this.dataset.state = "locked";
+          this.classList.remove("unlocked");
+          this.setAttribute("aria-label", "Show password");
+        }
+      });
+      btn._pwToggleInit = true;
+    }
+  });
+}
+
+/* -------------------------
+   Common helpers
+   ------------------------- */
 export function getCurrentUser() {
-  initializeAuth();
-  const currentUser = sessionStorage.getItem("currentUser");
-  return currentUser ? JSON.parse(currentUser) : null;
+  const cur = sessionStorage.getItem("currentUser");
+  return cur ? JSON.parse(cur) : null;
 }
 
 export function logoutUser() {
-  sessionStorage.setItem("currentUser", JSON.stringify(null));
-  return { success: true, message: "Logged out successfully" };
+  sessionStorage.removeItem("currentUser");
+  sessionStorage.removeItem("token");
+  return { success: true, message: "Logged out" };
 }
 
 export function isAuthenticated() {
-  return getCurrentUser() !== null;
-}
-
-export function redirectToDashboard(userType) {
-  if (userType === "admin") {
-    window.location.href = "/admin-dashboard"; // react routes will later map to this
-  } else {
-    window.location.href = "/student-dashboard";
-  }
+  return !!getCurrentUser();
 }
 
 export function protectPage() {
   const currentUser = getCurrentUser();
   if (!currentUser) {
-    alert("Please login first");
+    try { alert("Please login first"); } catch {}
     window.location.href = "/login";
     return false;
   }
   return true;
 }
 
-export function getAllUsers() {
-  initializeAuth();
-  return JSON.parse(sessionStorage.getItem("users")) || [];
-}
-
-export function updateUserProfile(userId, updatedData) {
-  initializeAuth();
-  let users = JSON.parse(sessionStorage.getItem("users")) || [];
-
-  const userIndex = users.findIndex((u) => u.id === userId);
-  if (userIndex === -1) return { success: false, message: "User not found" };
-
-  users[userIndex] = { ...users[userIndex], ...updatedData };
-  sessionStorage.setItem("users", JSON.stringify(users));
-
-  const currentUser = getCurrentUser();
-  if (currentUser && currentUser.id === userId) {
-    sessionStorage.setItem("currentUser", JSON.stringify({ ...currentUser, ...updatedData }));
-  }
-
-  return { success: true, message: "Profile updated successfully" };
-}
-
-export function deleteUser(userId) {
-  initializeAuth();
-  let users = JSON.parse(sessionStorage.getItem("users")) || [];
-  users = users.filter((u) => u.id !== userId);
-  sessionStorage.setItem("users", JSON.stringify(users));
-  return { success: true, message: "User deleted successfully" };
-}
-
-export function createDemoUsers() {
-  initializeAuth();
-  sessionStorage.setItem("users", JSON.stringify([]));
-  registerUser("Admin User", "admin@campus.com", "admin123", "admin");
-  registerUser("Student User", "student@campus.com", "student123", "student");
-  // keep console hint for devs
-  console.log("Demo users created. Admin: admin@campus.com (pass: admin123), Student: student@campus.com (pass: student123)");
-}
-
-// Keep password toggle initializer as on-page code relies on it
-export function initPasswordToggles() {
-  const lockedSvg = `<svg class="svg-anim" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M7 8V6a5 5 0 0110 0v2"></path></svg>`;
-  const unlockedSvg = `<svg class="svg-anim" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M16 8V6a4 4 0 10-8 0v2"></path></svg>`;
-
-  document.querySelectorAll(".pw-toggle").forEach((btn) => {
-    if (!btn.dataset.state) {
-      btn.dataset.state = "locked";
-      btn.innerHTML = lockedSvg;
-    }
-    btn.addEventListener("click", function () {
-      const targetId = this.dataset.target;
-      const input = document.getElementById(targetId);
-      if (!input) return;
-      const state = this.dataset.state;
-      if (state === "locked") {
-        input.type = "text";
-        this.innerHTML = unlockedSvg;
-        this.dataset.state = "unlocked";
-        this.classList.add("unlocked");
-        this.setAttribute("aria-label", this.getAttribute("title") ? "Hide password" : "Hide");
-        const svg = this.querySelector(".svg-anim");
-        if (svg) svg.style.transform = "rotate(-12deg) scale(1.05)";
-        setTimeout(() => {
-          if (svg) svg.style.transform = "";
-        }, 260);
-      } else {
-        input.type = "password";
-        this.innerHTML = lockedSvg;
-        this.dataset.state = "locked";
-        this.classList.remove("unlocked");
-        this.setAttribute("aria-label", this.getAttribute("title") ? "Show password" : "Show");
-      }
-    });
-  });
-}
-
-// Initialize on module load for pages that expect it
-if (typeof window !== "undefined") {
-  window.addEventListener("DOMContentLoaded", initializeAuth);
-}
+/* -------------------------
+   Backwards-compatible aliases (prevents import name errors)
+   ------------------------- */
+export const registerUser = registerUserLocal;
+export const loginUser = loginUserLocal;
