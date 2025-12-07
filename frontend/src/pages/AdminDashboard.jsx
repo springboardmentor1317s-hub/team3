@@ -1,4 +1,3 @@
-// src/pages/AdminDashboard.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser, protectPage, logoutUser } from "../utils/auth";
@@ -14,7 +13,6 @@ export default function AdminDashboard() {
     const cur = getCurrentUser();
     setUser(cur);
 
-    // If non-admin logs in here, redirect to student dashboard
     if (cur && cur.userType && cur.userType !== "admin") {
       navigate("/student-dashboard");
     }
@@ -30,8 +28,9 @@ export default function AdminDashboard() {
   return (
     <div className="admin-dashboard-page">
       <div className="bg-orbs">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
+        <div className="orb orb-1"></div>
+        <div className="orb orb-2"></div>
+        <div className="orb orb-3"></div>
       </div>
 
       <nav>
@@ -39,37 +38,37 @@ export default function AdminDashboard() {
         <ul>
           <li><a href="/">Home</a></li>
           <li><a href="/events">Events</a></li>
-          <li><a href="/admin-dashboard" style={{ color: "#a855f7" }}>Admin</a></li>
-          <li><a href="/login" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Logout</a></li>
+          <li><a href="/admin-dashboard" style={{ color: "#a855f7" }}>Admin Panel</a></li>
+          <li><a href="/" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Logout</a></li>
         </ul>
       </nav>
 
-      <main className="dashboard-container">
+      <div className="dashboard-container">
         <header className="dashboard-header">
-          <h1>Admin Dashboard</h1>
-          <p>Welcome{user ? `, ${user.fullName || user.name || user.email}` : ""} — manage events and registrations.</p>
+          <h1>Admin Control Panel</h1>
+          <p>Welcome {user?.fullName || user?.name || "Admin"}, manage events and registrations below.</p>
         </header>
 
         <section className="dashboard-grid admin-grid">
           <div className="card">
-            <h3>Create Event</h3>
-            <p>Create new events that students can register for.</p>
-            <a href="/create-event">Create</a>
+            <h3>➕ Create Event</h3>
+            <p>Create new campus events and set registration details for students to participate.</p>
+            <a href="/create-event">Create New</a>
           </div>
 
           <div className="card">
-            <h3>All Registrations</h3>
-            <p>View and export all event registrations.</p>
-            <a href="/registrations">View</a>
+            <h3>📊 All Registrations</h3>
+            <p>View and manage all event registrations from students across your campus.</p>
+            <a href="/registrations">View Registrations</a>
           </div>
 
           <div className="card">
-            <h3>Users</h3>
-            <p>List and manage users (students & admins).</p>
-            <a href="/users">Manage</a>
+            <h3>👥 Manage Users</h3>
+            <p>Add, edit, or remove student and admin accounts from the system.</p>
+            <a href="/users">Manage Users</a>
           </div>
         </section>
-      </main>
+      </div>
     </div>
   );
 }

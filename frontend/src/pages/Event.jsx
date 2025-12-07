@@ -1,24 +1,25 @@
 import React from "react";
-import "../styles/original.css"; // copy the <style> block from event.html into this file
+import { Link } from "react-router-dom";
+import "../styles/original.css";
 
 export default function EventPage() {
   return (
     <div>
       {/* Animated Background */}
       <div className="bg-orbs">
-        <div className="orb"></div>
-        <div className="orb"></div>
-        <div className="orb"></div>
+        <div className="orb orb-1"></div>
+        <div className="orb orb-2"></div>
+        <div className="orb orb-3"></div>
       </div>
 
       {/* Navbar */}
       <nav>
         <div className="logo">CampusEventHub</div>
         <ul>
-          <li><a href="index.html">Home</a></li>
-          <li><a href="event.html" style={{ color: "#a855f7" }}>Events</a></li>
-          <li><a href="register.html">Register</a></li>
-          <li><a href="login.html">Login</a></li>
+          <li><Link to="/">Home</Link></li>
+          <li><Link to="/events">Events</Link></li>
+          <li><Link to="/register">Register</Link></li>
+          <li><Link to="/login">Login</Link></li>
         </ul>
       </nav>
 
@@ -34,37 +35,37 @@ export default function EventPage() {
         <div className="event-card">
           <h3>Hackathon X</h3>
           <p>24-hour innovation marathon where brilliant minds collaborate to build cutting-edge solutions.</p>
-          <a href="#">View Details</a>
+          <Link to="/login">View Details</Link>
         </div>
 
         <div className="event-card">
           <h3>Sports Meet 2025</h3>
           <p>Cricket, football, badminton, and athletics. Showcase your athletic prowess and compete for glory.</p>
-          <a href="#">View Details</a>
+          <Link to="/login">View Details</Link>
         </div>
 
         <div className="event-card">
           <h3>National Cultural Fest</h3>
           <p>Dance, drama, music, and art performances. Celebrate diversity and express your creative spirit.</p>
-          <a href="#">View Details</a>
+          <Link to="/login">View Details</Link>
         </div>
 
         <div className="event-card">
           <h3>Debate Championship</h3>
           <p>Battle of ideas across varied topics. Showcase communication skills and critical thinking abilities.</p>
-          <a href="#">View Details</a>
+          <Link to="/login">View Details</Link>
         </div>
 
         <div className="event-card">
           <h3>AI &amp; ML Workshop</h3>
           <p>Hands-on sessions on Python, machine learning models, and real-world AI applications.</p>
-          <a href="#">View Details</a>
+          <Link to="/login">View Details</Link>
         </div>
 
         <div className="event-card">
           <h3>Startup Pitch Battle</h3>
           <p>Present your innovative business idea to mentors and investors. Win funding and recognition.</p>
-          <a href="#">View Details</a>
+          <Link to="/login">View Details</Link>
         </div>
 
       </div>
