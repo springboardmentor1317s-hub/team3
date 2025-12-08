@@ -7,6 +7,7 @@ import "../styles/original.css";
 export default function Register() {
   const [role, setRole] = useState("student");
   const [fullName, setFullName] = useState("");
+  const [college, setCollege]=useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,7 +32,7 @@ export default function Register() {
     }
 
     // Try backend register first
-    const payload = { name: fullName.trim(), email: email.trim(), password, college: "", role };
+    const payload = { name: fullName.trim(), email: email.trim(), password, college, role };
     const res = await registerViaApi(payload);
     if (res.success) {
       setMsg({ type: "success", text: res.message || "Registration successful. Redirecting to login..." });
@@ -67,7 +68,7 @@ export default function Register() {
         </ul>
       </nav>
 
-      <div className="flex justify-center items-center min-h-screen py-20">
+      <div className="page-center">
         <div className="form-card">
           <h2 className="form-title">Join Us</h2>
 
@@ -88,6 +89,11 @@ export default function Register() {
             <div className="form-group">
               <label className="form-label">Email Address</label>
               <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" required />
+            </div>
+
+             <div className="form-group">
+              <label className="form-label">College/University</label>
+              <input className="form-input" type="text" value={college} onChange={(e) => setCollege(e.target.value)} placeholder="Your College" required />
             </div>
 
             <div className="form-group pw-field">
