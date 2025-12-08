@@ -72,7 +72,7 @@ export default function Login() {
         </ul>
       </nav>
 
-      <div className="flex justify-center items-center h-screen">
+      <div className="page-center">
         <div className="form-card">
           <h2 className="form-title">Welcome Back</h2>
 

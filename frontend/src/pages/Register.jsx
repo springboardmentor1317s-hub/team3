@@ -68,7 +68,7 @@ export default function Register() {
         </ul>
       </nav>
 
-      <div className="flex justify-center items-center min-h-screen py-20">
+      <div className="page-center">
         <div className="form-card">
           <h2 className="form-title">Join Us</h2>
 
