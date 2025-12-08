@@ -1,8 +1,22 @@
-import React from "react";
 import { Link } from "react-router-dom";
+import { retrieveEvents } from "../utils/auth";
 import "../styles/original.css";
+import { useState, useEffect } from "react";
 
 export default function EventPage() {
+  const [events,setEvents]=useState([]);
+  const [msg,setMsg]=useState("");
+  async function getEvents(){
+   const res= await retrieveEvents();
+      if (res.success) {
+      setMsg({ type: "success", text: res.message || "" });
+      return;
+    }
+}
+ useEffect(() => {
+    getEvents();
+  }, []);
+
   return (
     <div>
       {/* Animated Background */}

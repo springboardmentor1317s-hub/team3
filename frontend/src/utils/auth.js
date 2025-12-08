@@ -96,6 +96,19 @@ export async function loginViaApi(payload) {
   }
 }
 
+export async function retrieveEvents() {
+  try {
+    const res = await api.get("/auth/events");
+    if (res.token) {
+      sessionStorage.setItem("token", res.token);
+    }
+    return { success: true, message: res.message || "Events Retrieval Successful", raw: res };
+  } catch (err) {
+    const message = err?.data?.message || (err?.data && JSON.stringify(err.data)) || err.message || "Retrieval failed";
+    return { success: false, message, raw: err?.data || err };
+  }
+}
+
 /* -------------------------
    initPasswordToggles
    (UI helper used by Login/Register pages)

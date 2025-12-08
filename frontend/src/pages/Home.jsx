@@ -4,7 +4,7 @@ import "../styles/original.css";
 
 export default function Home() {
   return (
-    <div>
+    <div className="home">
       {/* Animated Background */}
       <div className="bg-orbs">
         <div className="orb orb-1"></div>
