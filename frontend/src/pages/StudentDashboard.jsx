@@ -66,19 +66,28 @@ export default function StudentDashboard() {
         {/* Stats Grid */}
         <div className="dashboard-grid">
           <div className="stat-card">
-            <div className="stat-label">Events Registered</div>
-            <div className="stat-value">8</div>
-            <div className="stat-change">+2 this month</div>
+            <div className="stat-icon">📅</div>
+            <div className="stat-content">
+              <div className="stat-label">Events Registered</div>
+              <div className="stat-value">8</div>
+              <div className="stat-change">+2 this month</div>
+            </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Upcoming Events</div>
-            <div className="stat-value">3</div>
-            <div className="stat-change">Next: Tomorrow</div>
+            <div className="stat-icon">🔔</div>
+            <div className="stat-content">
+              <div className="stat-label">Upcoming Events</div>
+              <div className="stat-value">3</div>
+              <div className="stat-change">Next: Tomorrow</div>
+            </div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Events Attended</div>
-            <div className="stat-value">12</div>
-            <div className="stat-change">Experience points: 450</div>
+            <div className="stat-icon">🏆</div>
+            <div className="stat-content">
+              <div className="stat-label">Events Attended</div>
+              <div className="stat-value">12</div>
+              <div className="stat-change">Experience points: 450</div>
+            </div>
           </div>
         </div>
 

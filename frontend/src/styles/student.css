@@ -195,6 +195,9 @@ body {
     padding: 28px;
     backdrop-filter: blur(20px);
     transition: all 0.3s ease;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
 }
 
 .stat-card:hover {
@@ -203,11 +206,20 @@ body {
     transform: translateY(-4px);
 }
 
+.stat-icon {
+    font-size: 32px;
+    min-width: 40px;
+}
+
+.stat-content {
+    flex: 1;
+}
+
 .stat-label {
     font-size: 14px;
     color: #9ca3af;
     font-weight: 500;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .stat-value {
@@ -217,7 +229,7 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .stat-change {
