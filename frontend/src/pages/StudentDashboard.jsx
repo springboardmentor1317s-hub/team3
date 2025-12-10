@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FaCalendarAlt, FaBell, FaTrophy } from "react-icons/fa";
 import { useNavigate, Link } from "react-router-dom";
 import { getCurrentUser, protectPage, logoutUser } from "../utils/auth";
+import Navbar from "../components/Navbar";
 import "../styles/original.css";
 
 export default function StudentDashboard() {
@@ -28,41 +29,15 @@ export default function StudentDashboard() {
 
   return (
     <>
+    <Navbar />
     <div className="bg-orbs">
       <div className="orb"></div>
       <div className="orb"></div>
       <div className="orb"></div>
     </div>
 
-    <div className="dashboard-layout">
-      {/* Sidebar */}
-      <aside className="dashboard-sidebar">
-        <div className="sidebar-header">
-          <div className="sidebar-logo">CampusEventHub</div>
-        </div>
-        <ul className="sidebar-nav">
-          <li><a href="#" className="active"><span className="sidebar-icon">Dashboard</span></a></li>
-          <li><a href="#"><span className="sidebar-icon">My Events</span></a></li>
-          <li><a href="#"><span className="sidebar-icon">Favorites</span></a></li>
-          <li><a href="#"><span className="sidebar-icon">Registrations</span></a></li>
-          <li><a href="#"><span className="sidebar-icon">Settings</span></a></li>
-          <li><Link to="/"><span className="sidebar-icon">Back to Home</span></Link></li>
-        </ul>
-      </aside>
-
-      {/* Main Content */}
-      <main className="dashboard-main">
-        {/* Top Bar */}
-        <div className="top-bar">
-          <div className="user-info">
-            <div className="user-avatar">{user ? user?.name?.charAt(0).toUpperCase() : 'U'}</div>
-            <div className="user-text">
-              <h3>{user ? user.name : 'User'}</h3>
-              <p>Student • {user ? user.institution || 'Institution' : 'Institution'}</p>
-            </div>
-          </div>
-          <button className="logout-btn" onClick={handleLogout}>Logout</button>
-        </div>
+    {/* Main Content */}
+    <main className="dashboard-main">
 
         {/* Stats Grid */}
         <div className="dashboard-grid">
@@ -151,6 +126,5 @@ export default function StudentDashboard() {
           </div>
         </div>
       </main>
-    </div>
     </>
 )}

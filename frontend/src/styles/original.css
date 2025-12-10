@@ -134,6 +134,29 @@ nav ul li a:hover::after {
     width: calc(100% - 16px);
 }
 
+/* User info in navbar */
+.user-info-navbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.user-avatar-navbar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-weight: bold;
+    font-size: 14px;
+}
+
 /* Logout button styling */
 .nav-button {
     background: transparent;
@@ -438,6 +461,14 @@ nav ul li a:hover::after {
 
 .event-card a:hover::after {
     margin-left: 12px;
+}
+
+.event-card-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 15px;
 }
 
 .event-card:nth-child(1) { animation-delay: 0.1s; }
@@ -747,6 +778,13 @@ nav ul li a:hover::after {
     padding: 30px;
 }
 
+/* Dashboard main content */
+.dashboard-main {
+    margin-top: 120px; /* Account for fixed navbar */
+    padding: 30px;
+    width: 100%;
+}
+
 /* === TOP BAR === */
 .top-bar, .admin-top-bar {
     display: flex;
@@ -823,7 +861,7 @@ nav ul li a:hover::after {
 
 .stat-label, .metric-label {
     font-size: 14px;
-    color: #9ca3af;
+    color: #ffffff;
     font-weight: 500;
     margin-bottom: 12px;
 }
@@ -835,11 +873,7 @@ nav ul li a:hover::after {
 .stat-value, .metric-value {
     font-size: 32px;
     font-weight: 700;
-    background: linear-gradient(135deg, #ffffff 0%, #d1d5db 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 12px;
+    color: #ffffff;
 }
 
 .metric-value {
@@ -890,6 +924,11 @@ nav ul li a:hover::after {
     backdrop-filter: blur(20px);
 }
 
+/* Ensure all text inside event list cards is visible (white) */
+.event-list, .event-list * {
+    color: #ffffff;
+}
+
 .event-item {
     display: flex;
     justify-content: space-between;
@@ -915,7 +954,7 @@ nav ul li a:hover::after {
 
 .event-details p {
     font-size: 14px;
-    color: #9ca3af;
+    color: #ffffff; /* keep event subtitle text white */
 }
 
 .event-status {
@@ -942,6 +981,11 @@ nav ul li a:hover::after {
     border-radius: 16px;
     padding: 32px;
     backdrop-filter: blur(20px);
+}
+
+/* Also ensure text inside full-width card stays white */
+.full-width-card, .full-width-card * {
+    color: #ffffff;
 }
 
 /* === DASHBOARD CONTAINER === */
@@ -1049,7 +1093,7 @@ nav ul li a:hover::after {
 }
 
 .admin-dashboard-wrapper {
-    padding: 100px 60px 60px;
+    padding: 160px 60px 60px;
     max-width: 1400px;
     margin: 0 auto;
 }

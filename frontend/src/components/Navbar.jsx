@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { getCurrentUser, logoutUser } from '../utils/auth';
 
 const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+  const user = getCurrentUser();
+  console.log(user,"Aman");
 
   const handleSearch = (e) => {
     e.preventDefault();
     // Add your search functionality here
     console.log('Searching for:', searchQuery);
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate('/login');
   };
 
   return (
@@ -31,8 +40,22 @@ const Navbar = () => {
       <ul>
         <li><Link to="/">Home</Link></li>
         <li><Link to="/events">Events</Link></li>
-        <li><Link to="/register">Register</Link></li>
-        <li><Link to="/login">Login</Link></li>
+        {user ? (
+          <>
+            <li>
+              <div className="user-info-navbar">
+                <div className="user-avatar-navbar">{user?.fullName?.charAt(0).toUpperCase() || 'U'}</div>
+                <span>{user?.fullName || 'User'}</span>
+              </div>
+            </li>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Logout</a></li>
+          </>
+        ) : (
+          <>
+            <li><Link to="/register">Register</Link></li>
+            <li><Link to="/login">Login</Link></li>
+          </>
+        )}
       </ul>
     </nav>
   );

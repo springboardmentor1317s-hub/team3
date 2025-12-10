@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FaCalendarAlt, FaUsers, FaChartBar, FaChartLine } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser, protectPage, logoutUser } from "../utils/auth";
+import Navbar from "../components/Navbar";
 import "../styles/original.css";
 
 export default function AdminDashboard() {
@@ -19,11 +20,6 @@ export default function AdminDashboard() {
     }
   }, [navigate]);
 
-  function handleLogout() {
-    logoutUser();
-    navigate("/login");
-  }
-
   if (!getCurrentUser()) return null;
 
   return (
@@ -34,27 +30,9 @@ export default function AdminDashboard() {
         <div className="orb orb-3"></div>
       </div>
 
-      <nav>
-        <div className="logo">CampusEventHub</div>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/events">Events</a></li>
-          <li><a href="/admin-dashboard" style={{ color: "#a855f7" }}>Admin Panel</a></li>
-          <li><a href="/" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Logout</a></li>
-        </ul>
-      </nav>
+      <Navbar />
 
       <div className="admin-dashboard-wrapper">
-        <div className="admin-top-bar">
-          <div className="admin-user-info">
-            <div className="admin-user-avatar">{user?.name?.charAt(0).toUpperCase() || 'A'}</div>
-            <div className="admin-user-text">
-              <h3>{user?.name || 'Admin'}</h3>
-              <p>Administrator</p>
-            </div>
-          </div>
-          <button className="admin-logout-btn" onClick={handleLogout}>Logout</button>
-        </div>
 
         <div className="admin-header">
           <h1>Admin Dashboard</h1>
