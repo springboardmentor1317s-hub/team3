@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerViaApi, registerUserLocal } from "../utils/auth";
+import Navbar from "../components/Navbar";
 import "../styles/original.css";
 
 export default function Register() {
@@ -58,15 +59,7 @@ export default function Register() {
         <div className="orb orb-2" />
       </div>
 
-      <nav>
-        <div className="logo">CampusEventHub</div>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/events">Events</a></li>
-          <li><a href="/register" style={{ color: "#a855f7" }}>Register</a></li>
-          <li><a href="/login">Login</a></li>
-        </ul>
-      </nav>
+      <Navbar />
 
       <div className="page-center">
         <div className="form-card">

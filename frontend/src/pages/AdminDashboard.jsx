@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { FaCalendarAlt, FaUsers, FaChartBar, FaChartLine } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { getCurrentUser, protectPage, logoutUser } from "../utils/auth";
 import "../styles/original.css";
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
 
         <div className="admin-metrics">
           <div className="metric-card metric-card-1">
-            <div className="metric-icon">📅</div>
+            <div className="metric-icon"><FaCalendarAlt size={28} /></div>
             <div className="metric-content">
               <div className="metric-label">Total Events</div>
               <div className="metric-value">12</div>
@@ -71,7 +72,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="metric-card metric-card-2">
-            <div className="metric-icon">👥</div>
+            <div className="metric-icon"><FaUsers size={28} /></div>
             <div className="metric-content">
               <div className="metric-label">Active Users</div>
               <div className="metric-value">1,234</div>
@@ -80,7 +81,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="metric-card metric-card-3">
-            <div className="metric-icon">📊</div>
+            <div className="metric-icon"><FaChartBar size={28} /></div>
             <div className="metric-content">
               <div className="metric-label">Total Registrations</div>
               <div className="metric-value">5,678</div>
@@ -89,7 +90,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="metric-card metric-card-4">
-            <div className="metric-icon">📈</div>
+            <div className="metric-icon"><FaChartLine size={28} /></div>
             <div className="metric-content">
               <div className="metric-label">Pending Approvals</div>
               <div className="metric-value">24</div>
