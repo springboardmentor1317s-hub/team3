@@ -10,12 +10,20 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     // initialize password toggles (UI helper)
     if (typeof initPasswordToggles === "function") initPasswordToggles();
   }, []);
+
+  useEffect(() => {
+    if (msg.text && msg.type === "error") {
+      const timer = setTimeout(() => setMsg({ type: "", text: "" }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [msg]);
 
   function handleRole(r) {
     setRole(r);
@@ -25,14 +33,24 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg({ type: "", text: "" });
+    setError("");
 
     // Try backend login first
     const payload = { email: email.trim(), password, role };
     const res = await loginViaApi(payload);
     if (res.success) {
+      if (res.raw.user.role !== role) {
+        setError(`You must be ${role} to login from this tab.`);
+        return;
+      }
       setMsg({ type: "success", text: res.message || "Login successful" });
       const cur = sessionStorage.getItem("currentUser");
       const u = cur ? JSON.parse(cur) : null;
+      if (u && u.userType !== role && u.role !== role) {
+        setMsg({ type: "error", text: `You must be ${role} to login from this tab.` });
+        return;
+      }
+      setMsg({ type: "success", text: res.message || "Login successful" });
       setTimeout(() => {
         if (u && (u.userType === "admin" || u.role === "admin")) navigate("/admin-dashboard");
         else navigate("/student-dashboard");
@@ -43,9 +61,13 @@ export default function Login() {
     // Fallback to local demo login if API failed
     const fallback = loginUserLocal(email.trim(), password, role);
     if (fallback.success) {
+      const u = JSON.parse(sessionStorage.getItem("currentUser"));
+      if (u && u.userType !== role) {
+        setMsg({ type: "error", text: `You must be ${role} to login from this tab.` });
+        return;
+      }
       setMsg({ type: "success", text: "Logged in (demo mode)" });
       setTimeout(() => {
-        const u = JSON.parse(sessionStorage.getItem("currentUser"));
         if (u && u.userType === "admin") navigate("/admin-dashboard");
         else navigate("/student-dashboard");
       }, 400);
@@ -71,6 +93,7 @@ export default function Login() {
 
           {msg.type === "error" && <div className="error-message show">{msg.text}</div>}
           {msg.type === "success" && <div className="success-message show">{msg.text}</div>}
+          {error && <p style={{ color: 'red' }}>{error}</p>}
 
           <form className="flex flex-col" id="loginForm" onSubmit={handleSubmit}>
             <div className="form-group">

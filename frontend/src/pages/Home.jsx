@@ -82,18 +82,21 @@ export default function Home() {
       {/* Event Cards */}
       <div className="event-section">
         <div className="event-card">
+          <img className="event-card-img" src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=800&h=400&fit=crop" alt="Hackathons" />
           <h3>Hackathons</h3>
           <p>24-hour innovation marathons where brilliant minds code solutions to real-world problems.</p>
           <Link to="/events">Learn More</Link>
         </div>
 
         <div className="event-card">
+          <img className="event-card-img" src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&h=400&fit=crop" alt="Sports" />
           <h3>Sports Championships</h3>
           <p>High-energy competitions across cricket, football, and athletics. Showcase your talent.</p>
           <Link to="/events">Join Now</Link>
         </div>
 
         <div className="event-card">
+          <img className="event-card-img" src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop" alt="Cultural Festival" />
           <h3>Cultural Festivals</h3>
           <p>Celebrate creativity through music, dance, art, and theater. Your stage awaits.</p>
           <Link to="/events">Explore</Link>
