@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginViaApi, loginUserLocal, initPasswordToggles } from "../utils/auth";
-import Navbar from "../components/Navbar";
 import "../styles/original.css";
+import Navbar from "../components/Navbar";
 
 export default function Login() {
   const [role, setRole] = useState("student");
@@ -16,6 +16,13 @@ export default function Login() {
     // initialize password toggles (UI helper)
     if (typeof initPasswordToggles === "function") initPasswordToggles();
   }, []);
+
+  useEffect(() => {
+    if (msg.text && msg.type === "error") {
+      const timer = setTimeout(() => setMsg({ type: "", text: "" }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [msg]);
 
   function handleRole(r) {
     setRole(r);
@@ -30,9 +37,13 @@ export default function Login() {
     const payload = { email: email.trim(), password, role };
     const res = await loginViaApi(payload);
     if (res.success) {
-      setMsg({ type: "success", text: res.message || "Login successful" });
       const cur = sessionStorage.getItem("currentUser");
       const u = cur ? JSON.parse(cur) : null;
+      if (u && u.userType !== role && u.role !== role) {
+        setMsg({ type: "error", text: `You must be ${role} to login from this tab.` });
+        return;
+      }
+      setMsg({ type: "success", text: res.message || "Login successful" });
       setTimeout(() => {
         if (u && (u.userType === "admin" || u.role === "admin")) navigate("/admin-dashboard");
         else navigate("/student-dashboard");
@@ -43,9 +54,13 @@ export default function Login() {
     // Fallback to local demo login if API failed
     const fallback = loginUserLocal(email.trim(), password, role);
     if (fallback.success) {
+      const u = JSON.parse(sessionStorage.getItem("currentUser"));
+      if (u && u.userType !== role) {
+        setMsg({ type: "error", text: `You must be ${role} to login from this tab.` });
+        return;
+      }
       setMsg({ type: "success", text: "Logged in (demo mode)" });
       setTimeout(() => {
-        const u = JSON.parse(sessionStorage.getItem("currentUser"));
         if (u && u.userType === "admin") navigate("/admin-dashboard");
         else navigate("/student-dashboard");
       }, 400);
@@ -58,11 +73,6 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="bg-orbs">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-      </div>
-
       <Navbar />
 
       <div className="page-center">
