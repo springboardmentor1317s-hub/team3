@@ -6,7 +6,6 @@ const Navbar = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const user = getCurrentUser();
-  console.log(user,"Aman");
 
   const handleSearch = (e) => {
     e.preventDefault();
