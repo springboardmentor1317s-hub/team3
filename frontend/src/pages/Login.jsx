@@ -10,6 +10,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,11 +33,17 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
     setMsg({ type: "", text: "" });
+    setError("");
 
     // Try backend login first
     const payload = { email: email.trim(), password, role };
     const res = await loginViaApi(payload);
     if (res.success) {
+      if (res.raw.user.role !== role) {
+        setError(`You must be ${role} to login from this tab.`);
+        return;
+      }
+      setMsg({ type: "success", text: res.message || "Login successful" });
       const cur = sessionStorage.getItem("currentUser");
       const u = cur ? JSON.parse(cur) : null;
       if (u && u.userType !== role && u.role !== role) {
@@ -86,6 +93,7 @@ export default function Login() {
 
           {msg.type === "error" && <div className="error-message show">{msg.text}</div>}
           {msg.type === "success" && <div className="success-message show">{msg.text}</div>}
+          {error && <p style={{ color: 'red' }}>{error}</p>}
 
           <form className="flex flex-col" id="loginForm" onSubmit={handleSubmit}>
             <div className="form-group">
