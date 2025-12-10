@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerViaApi, registerUserLocal } from "../utils/auth";
 import "../styles/original.css";
+import Navbar from "../components/Navbar";
 
 export default function Register() {
   const [role, setRole] = useState("student");
@@ -53,20 +54,7 @@ export default function Register() {
 
   return (
     <div className="register-page">
-      <div className="bg-orbs">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-      </div>
-
-      <nav>
-        <div className="logo">CampusEventHub</div>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/events">Events</a></li>
-          <li><a href="/register" style={{ color: "#a855f7" }}>Register</a></li>
-          <li><a href="/login">Login</a></li>
-        </ul>
-      </nav>
+      <Navbar />
 
       <div className="page-center">
         <div className="form-card">

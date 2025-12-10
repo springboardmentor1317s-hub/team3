@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/original.css";
+import Navbar from "../components/Navbar";
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -36,24 +37,8 @@ export default function Home() {
 
   return (
     <div className="home">
-      {/* Animated Background */}
-      <div className="bg-orbs">
-        <div className="orb orb-1"></div>
-        <div className="orb orb-2"></div>
-        <div className="orb orb-3"></div>
-      </div>
-
-      {/* Navbar */}
-      <nav>
-        <img src="/logo.jpg" alt="CampusEventHub Logo" className="logo" />
-        <ul>
-          <li><Link to="/">Home</Link></li>
-          <li><Link to="/events">Events</Link></li>
-          <li><Link to="/register">Register</Link></li>
-          <li><Link to="/login">Login</Link></li>
-        </ul>
-      </nav>
-
+      
+      <Navbar />
       {/* Hero */}
       <section className="hero">
         <h1>Discover Amazing<br />Campus Events</h1>
