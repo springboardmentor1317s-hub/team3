@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginViaApi, loginUserLocal, initPasswordToggles } from "../utils/auth";
 import "../styles/original.css";
+import Navbar from "../components/Navbar";
 
 export default function Login() {
   const [role, setRole] = useState("student");
@@ -57,20 +58,7 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="bg-orbs">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-      </div>
-
-      <nav>
-        <div className="logo">CampusEventHub</div>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="/events">Events</a></li>
-          <li><a href="/register">Register</a></li>
-          <li><a href="/login" style={{ color: "#a855f7" }}>Login</a></li>
-        </ul>
-      </nav>
+      <Navbar />
 
       <div className="page-center">
         <div className="form-card">
