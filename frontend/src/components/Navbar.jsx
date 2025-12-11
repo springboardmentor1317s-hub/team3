@@ -41,13 +41,15 @@ const Navbar = () => {
         <li><Link to="/events">Events</Link></li>
         {user ? (
           <>
+            <li><a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Logout</a></li>
             <li>
               <div className="user-info-navbar">
-                <div className="user-avatar-navbar">{user?.fullName?.charAt(0).toUpperCase() || 'U'}</div>
-                <span>{user?.fullName || 'User'}</span>
+                <Link to={user.role === 'admin' ? '/admin-dashboard' : '/student-dashboard'}>
+                  <div className="user-avatar-navbar">{user?.fullName?.charAt(0).toUpperCase() || 'U'}</div>
+                  <span>{user?.fullName || 'User'}</span>
+                </Link>
               </div>
             </li>
-            <li><a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}>Logout</a></li>
           </>
         ) : (
           <>
