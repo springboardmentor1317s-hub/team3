@@ -135,14 +135,17 @@ nav ul li a:hover::after {
 }
 
 /* User info in navbar */
-.user-info-navbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #ffffff;
-    font-size: 16px;
-    font-weight: 600;
+.user-info-navbar, .user-info-navbar a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
 }
+
+
 
 .user-avatar-navbar {
     width: 32px;
