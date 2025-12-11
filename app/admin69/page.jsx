@@ -7,7 +7,7 @@ export default function CreateAdmin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [college, setCollege] = useState('');
-  const [adminKey, setAdminKey] = useState('');
+  const [role, setRole] = useState('student');
   const [message, setMessage] = useState('');
 
   const handleSubmit = async (e) => {
@@ -17,7 +17,7 @@ export default function CreateAdmin() {
       const response = await fetch('/api/auth/create-admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, password, college, adminKey }),
+        body: JSON.stringify({ fullName, email, password, college, role }),
       });
 
       const data = await response.json();
@@ -28,7 +28,7 @@ export default function CreateAdmin() {
         setEmail('');
         setPassword('');
         setCollege('');
-        setAdminKey('');
+        setRole('student');
       }
     } catch (err) {
       setMessage('Error: ' + err.message);
@@ -38,7 +38,7 @@ export default function CreateAdmin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
-        <h1 className="text-3xl font-bold text-white text-center mb-8">Create Admin</h1>
+        <h1 className="text-3xl font-bold text-white text-center mb-8">Add User</h1>
 
         {message && (
           <div className="mb-6 p-3 bg-blue-500/20 border border-blue-500 rounded-lg text-blue-200 text-sm text-center">
@@ -79,19 +79,20 @@ export default function CreateAdmin() {
             className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
           />
 
-          <input
-            type="password"
-            value={adminKey}
-            onChange={(e) => setAdminKey(e.target.value)}
-            placeholder="Admin Key (admin69)"
-            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
-          />
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-400"
+          >
+            <option value="student" className="bg-gray-900">Student</option>
+            <option value="admin" className="bg-gray-900">Admin</option>
+          </select>
 
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition"
           >
-            Create Admin
+            Add User
           </button>
         </form>
       </div>

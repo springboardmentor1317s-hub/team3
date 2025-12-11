@@ -34,69 +34,170 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("all");
 
-  const stats = [
-    { icon: Calendar, label: "Total Events", value: "12", change: "+3 this month", color: "purple", trend: "up" },
-    { icon: Users, label: "Active Users", value: "1,234", change: "+120 new", color: "blue", trend: "up" },
-    { icon: CheckCircle, label: "Total Registrations", value: "5,678", change: "89% capacity", color: "green", trend: "up" },
-    { icon: Clock, label: "Pending Approvals", value: "24", change: "Action needed", color: "orange", trend: "alert" }
-  ];
+  // State for real data
+  const [statsData, setStatsData] = useState({
+    totalEvents: 0,
+    activeUsers: 0,
+    totalRegistrations: 0,
+    pendingApprovals: 0
+  });
+  const [usersList, setUsersList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const events = [
-    {
-      id: 1,
-      title: "Inter College Hackathon 2024",
-      category: "Tech Events",
-      participants: 147,
-      date: "Dec 15-16, 2025",
-      status: "active",
-      registrations: "147/200",
-      revenue: "$2,450"
-    },
-    {
-      id: 2,
-      title: "Cultural Fest - Harmony 2024",
-      category: "Cultural Events",
-      participants: 523,
-      date: "Dec 20-22, 2025",
-      status: "active",
-      registrations: "523/600",
-      revenue: "$8,450"
-    },
-    {
-      id: 3,
-      title: "Basketball Championship",
-      category: "Sports Events",
-      participants: 89,
-      date: "Dec 10, 2025",
-      status: "completed",
-      registrations: "89/100",
-      revenue: "$1,780"
-    },
-    {
-      id: 4,
-      title: "Tech Seminar - Innovation 2024",
-      category: "Academic",
-      participants: 234,
-      date: "Dec 25, 2025",
-      status: "active",
-      registrations: "234/300",
-      revenue: "$3,510"
+  // Create Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    category: "Technology",
+    date: "",
+    time: "",
+    location: "",
+    college: "",
+    totalSeats: 100,
+    createdBy: "" // Will be selected from users list
+  });
+
+  // Fetch data on mount
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [statsRes, eventsRes, usersRes] = await Promise.all([
+          fetch('/api/admin/stats'),
+          fetch('/api/admin/events'),
+          fetch('/api/admin/users')
+        ]);
+
+        if (statsRes.ok) {
+          const data = await statsRes.json();
+          setStatsData(data);
+        }
+
+        if (eventsRes.ok) {
+          const data = await eventsRes.json();
+          setEventsList(data.events || []);
+        }
+
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          setUsersList(data.users || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleDeleteEvent = async (id) => {
+    if (!confirm("Are you sure you want to delete this event?")) return;
+    try {
+      const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setEventsList(eventsList.filter(ev => ev._id !== id));
+        // Refresh stats potentially
+      }
+    } catch (error) {
+      console.error("Failed to delete event", error);
     }
+  };
+
+  const handleDeleteUser = async (id) => {
+    // Placeholder for user deletion if API exists, or just UI removal for now
+    if (!confirm("User deletion is not fully implemented yet. Remove from UI?")) return;
+    setUsersList(usersList.filter(u => u._id !== id));
+  };
+
+  const stats = [
+    { icon: Calendar, label: "Total Events", value: statsData.totalEvents.toString(), change: "Updated now", color: "purple", trend: "up" },
+    { icon: Users, label: "Active Users", value: statsData.activeUsers.toString(), change: "Total registered", color: "blue", trend: "up" },
+    { icon: CheckCircle, label: "Total Registrations", value: statsData.totalRegistrations.toString(), change: "All time", color: "green", trend: "up" },
+    { icon: Clock, label: "Pending Approvals", value: statsData.pendingApprovals.toString(), change: "Action needed", color: "orange", trend: "alert" }
   ];
 
-  const pendingApprovals = [
-    { id: 1, student: "Rahul Sharma", event: "Hackathon X", college: "IIT Bombay", time: "2 hours ago" },
-    { id: 2, student: "Priya Patel", event: "Cultural Fest", college: "Delhi University", time: "4 hours ago" },
-    { id: 3, student: "Amit Kumar", event: "Sports Meet", college: "MIT College", time: "6 hours ago" },
-    { id: 4, student: "Sneha Singh", event: "AI Workshop", college: "NIT Trichy", time: "8 hours ago" }
-  ];
+  const events = eventsList; // Use fetched events
 
-  const recentActivity = [
-    { type: "registration", message: "New registration for Hackathon X", time: "5 min ago" },
-    { type: "approval", message: "Approved 12 registrations", time: "1 hour ago" },
-    { type: "event", message: "Created new event: Tech Summit 2025", time: "3 hours ago" },
-    { type: "user", message: "15 new users registered", time: "5 hours ago" }
-  ];
+
+
+  // Filter for pending approvals
+  const pendingApprovals = eventsList.filter(ev => ev.status === 'pending');
+
+  const handleApproveEvent = async (id, approve = true) => {
+    try {
+      const status = approve ? 'active' : 'cancelled';
+      const res = await fetch(`/api/admin/events/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+
+      if (res.ok) {
+        // Update local state
+        setEventsList(eventsList.map(ev => ev._id === id ? { ...ev, status } : ev));
+        // Update stats
+        setStatsData(prev => ({
+          ...prev,
+          pendingApprovals: prev.pendingApprovals - 1,
+          totalEvents: approve ? prev.totalEvents : prev.totalEvents // total events remains same, active might change if we tracked it separately
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to update event status", error);
+    }
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // Default to first user if no creator selected (fallback)
+      const payload = {
+        ...newEvent,
+        createdBy: newEvent.createdBy || (usersList.length > 0 ? usersList[0]._id : null)
+      };
+
+      const res = await fetch('/api/admin/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setEventsList([data.event, ...eventsList]);
+        setStatsData(prev => ({ ...prev, totalEvents: prev.totalEvents + 1 }));
+        setShowCreateModal(false);
+        setNewEvent({
+          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, createdBy: ""
+        });
+        alert("Event created successfully!");
+      } else {
+        alert("Failed to create event");
+      }
+    } catch (error) {
+      console.error("Failed to create event", error);
+    }
+  };
+
+  // Derived Activity Log
+  const derivedActivity = [
+    ...eventsList.map(ev => ({
+      _id: ev._id,
+      type: 'event',
+      message: `New Event: ${ev.title}`,
+      time: new Date(ev.createdAt).toLocaleString(),
+      timestamp: new Date(ev.createdAt)
+    })),
+    ...usersList.map(u => ({
+      _id: u._id,
+      type: 'user',
+      message: `New User: ${u.fullName}`,
+      time: new Date(u.createdAt).toLocaleString(),
+      timestamp: new Date(u.createdAt)
+    }))
+  ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
 
   const getStatusColor = (status) => {
     const colors = {
@@ -117,7 +218,7 @@ export default function AdminDashboard() {
             <span className="text-2xl">🎓</span>
             <h1 className="text-white font-bold text-xl">Campus Events</h1>
           </a>
-          
+
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
             <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
@@ -125,7 +226,7 @@ export default function AdminDashboard() {
             <a href="/StudentDashboard" className="text-gray-300 hover:text-white transition-colors">Student</a>
             <a href="/AdminDashboard" className="text-white font-semibold">Admin</a>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <a href="/Login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Logout
@@ -245,22 +346,24 @@ export default function AdminDashboard() {
                     </button>
                   </div>
                   <div className="card-body">
-                    {events.slice(0, 4).map((ev) => (
-                      <div className="list-row" key={ev.id}>
+                    {loading ? <div style={{ padding: 20 }}>Loading...</div> : eventsList.slice(0, 4).map((ev) => (
+                      <div className="list-row" key={ev._id}>
                         <div>
                           <div className="list-title">{ev.title}</div>
-                          <div className="list-sub">{ev.category} • {ev.participants} participants</div>
+                          <div className="list-sub">{ev.category} • {ev.registeredCount || 0} registered</div>
                         </div>
                         <div className={`pill ${getStatusColor(ev.status)}`}>{ev.status}</div>
                       </div>
                     ))}
+                    {!loading && eventsList.length === 0 && <div style={{ padding: 20 }}>No recent events</div>}
                   </div>
                 </div>
 
                 <div className="card recent-activity">
                   <h3>Recent Activity</h3>
                   <div className="card-body">
-                    {recentActivity.map((act, idx) => (
+                    {derivedActivity.length === 0 && <div style={{ padding: 10 }}>No recent activity</div>}
+                    {derivedActivity.map((act, idx) => (
                       <div className="activity-row" key={idx}>
                         <div className={`act-icon ${act.type}`}><Activity /></div>
                         <div className="act-body">
@@ -302,7 +405,7 @@ export default function AdminDashboard() {
             <section>
               <div className="section-head">
                 <h2>Manage Events</h2>
-                <button className="btn primary">
+                <button className="btn primary" onClick={() => setShowCreateModal(true)}>
                   <Plus /> <span>Create New Event</span>
                 </button>
               </div>
@@ -336,19 +439,19 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {events.map(ev => (
-                      <tr key={ev.id}>
+                    {eventsList.map(ev => (
+                      <tr key={ev._id}>
                         <td className="ev-title">{ev.title}</td>
                         <td>{ev.category}</td>
                         <td>{ev.date}</td>
-                        <td>{ev.registrations}</td>
-                        <td className="ev-rev">{ev.revenue}</td>
+                        <td>{ev.registeredCount || 0}/{ev.totalSeats}</td>
+                        <td className="ev-rev">{ev.revenue || "Free"}</td>
                         <td><span className={`pill ${getStatusColor(ev.status)}`}>{ev.status}</span></td>
                         <td>
                           <div className="row-actions">
                             <button className="icon-btn small" title="View"><Eye /></button>
                             <button className="icon-btn small" title="Edit"><Edit /></button>
-                            <button className="icon-btn small danger" title="Delete"><Trash2 /></button>
+                            <button className="icon-btn small danger" title="Delete" onClick={() => handleDeleteEvent(ev._id)}><Trash2 /></button>
                           </div>
                         </td>
                       </tr>
@@ -364,26 +467,26 @@ export default function AdminDashboard() {
               <div className="section-head">
                 <h2>Pending Approvals</h2>
                 <div className="actions-inline">
-                  <button className="btn success ghost">Approve All</button>
-                  <button className="btn danger ghost">Reject All</button>
+                  {/* Bulk actions could go here */}
                 </div>
               </div>
 
               <div className="approvals-list">
+                {pendingApprovals.length === 0 && <div className="card" style={{ padding: 20 }}>No pending approvals</div>}
                 {pendingApprovals.map(a => (
-                  <div className="approval-row card" key={a.id}>
+                  <div className="approval-row card" key={a._id}>
                     <div className="approval-left">
-                      <div className="avatar-lg">{a.student.charAt(0)}</div>
+                      <div className="avatar-lg">{a.createdBy?.fullName?.charAt(0) || '?'}</div>
                       <div>
-                        <div className="approval-name">{a.student}</div>
+                        <div className="approval-name">{a.title}</div>
                         <div className="approval-sub">{a.college}</div>
-                        <div className="approval-sub">Event: {a.event}</div>
+                        <div className="approval-sub">Host: {a.createdBy?.fullName || 'Unknown'}</div>
                       </div>
                     </div>
                     <div className="approval-actions">
-                      <div className="time-txt">{a.time}</div>
-                      <button className="btn success ghost"><CheckCircle /> Approve</button>
-                      <button className="btn danger ghost"><XCircle /> Reject</button>
+                      <div className="time-txt">{new Date(a.createdAt).toLocaleDateString()}</div>
+                      <button className="btn success ghost" onClick={() => handleApproveEvent(a._id, true)}><CheckCircle /> Approve</button>
+                      <button className="btn danger ghost" onClick={() => handleApproveEvent(a._id, false)}><XCircle /> Reject</button>
                     </div>
                   </div>
                 ))}
@@ -391,15 +494,180 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {(currentView === "users" || currentView === "analytics") && (
-            <div className="coming-soon card">
-              <div className="big-emoji">🚧</div>
-              <h3>Coming Soon</h3>
-              <p>This section is under development</p>
-            </div>
+          {currentView === "users" && (
+            <section>
+              <div className="section-head">
+                <h2>User Management</h2>
+                <div className="actions-inline">
+                  <button className="btn primary ghost"><Download /> Export CSV</button>
+                </div>
+              </div>
+
+              <div className="card table-card">
+                <table className="events-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>College</th>
+                      <th>Role</th>
+                      <th>Joined</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersList.map(u => (
+                      <tr key={u._id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div className="avatar" style={{ width: 32, height: 32, fontSize: 12 }}>{u.fullName?.charAt(0)}</div>
+                            {u.fullName}
+                          </div>
+                        </td>
+                        <td>{u.email}</td>
+                        <td>{u.college}</td>
+                        <td><span className={`pill ${u.role === 'admin' ? 'status-active' : 'status-completed'}`}>{u.role}</span></td>
+                        <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                        <td>
+                          <button className="icon-btn small danger" title="Delete" onClick={() => handleDeleteUser(u._id)}><Trash2 /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {currentView === "analytics" && (
+            <section>
+              <div className="section-head"><h2>Analytics Overview</h2></div>
+
+              <div className="stats-grid" style={{ marginBottom: 20 }}>
+                <div className="card stat-card">
+                  <div className="stat-label">Total Events</div>
+                  <div className="stat-value">{eventsList.length}</div>
+                </div>
+                <div className="card stat-card">
+                  <div className="stat-label">Active Users</div>
+                  <div className="stat-value">{usersList.length}</div>
+                </div>
+                <div className="card stat-card">
+                  <div className="stat-label">Pending Approvals</div>
+                  <div className="stat-value">{pendingApprovals.length}</div>
+                </div>
+              </div>
+
+              <div className="two-col">
+                <div className="card">
+                  <h3>Events by Status</h3>
+                  <div style={{ marginTop: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {['active', 'completed', 'pending', 'cancelled'].map(status => {
+                      const count = eventsList.filter(e => e.status === status).length;
+                      const pct = eventsList.length ? Math.round((count / eventsList.length) * 100) : 0;
+                      return (
+                        <div key={status}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, textTransform: 'capitalize' }}>
+                            <span>{status}</span><span>{count} ({pct}%)</span>
+                          </div>
+                          <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4 }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: getStatusColor(status) === 'status-active' ? '#34d399' : '#fb923c', borderRadius: 4 }}></div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="card">
+                  <h3>Events by Category</h3>
+                  <div style={{ marginTop: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {Array.from(new Set(eventsList.map(e => e.category))).map(cat => {
+                      const count = eventsList.filter(e => e.category === cat).length;
+                      const pct = eventsList.length ? Math.round((count / eventsList.length) * 100) : 0;
+                      return (
+                        <div key={cat}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                            <span>{cat}</span><span>{count}</span>
+                          </div>
+                          <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4 }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: '#818cf8', borderRadius: 4 }}></div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {eventsList.length === 0 && <div>No data available</div>}
+                  </div>
+                </div>
+              </div>
+            </section>
           )}
         </main>
       </div>
+
+      {showCreateModal && (
+        <div className="modal-overlay">
+          <div className="modal-content card">
+            <div className="modal-head">
+              <h2>Create New Event</h2>
+              <button className="icon-btn" onClick={() => setShowCreateModal(false)}><X /></button>
+            </div>
+            <form onSubmit={handleCreateSubmit} className="create-form">
+              <div className="form-group">
+                <label>Title</label>
+                <input required value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} placeholder="Event Title" />
+              </div>
+              <div className="form-group">
+                <label>Category</label>
+                <select value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value })}>
+                  <option>Technology</option>
+                  <option>Sports</option>
+                  <option>Culture</option>
+                  <option>Academic</option>
+                  <option>Business</option>
+                  <option>Workshop</option>
+                </select>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" required value={newEvent.date} onChange={e => setNewEvent({ ...newEvent, date: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Time</label>
+                  <input type="time" required value={newEvent.time} onChange={e => setNewEvent({ ...newEvent, time: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Location</label>
+                <input required value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} placeholder="Venue" />
+              </div>
+              <div className="form-group">
+                <label>College</label>
+                <input required value={newEvent.college} onChange={e => setNewEvent({ ...newEvent, college: e.target.value })} placeholder="Organizing College" />
+              </div>
+              <div className="form-group">
+                <label>Total Seats</label>
+                <input type="number" required value={newEvent.totalSeats} onChange={e => setNewEvent({ ...newEvent, totalSeats: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Description</label>
+                <textarea required value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })} rows={3} />
+              </div>
+              <div className="form-group">
+                <label>Host (User)</label>
+                <select value={newEvent.createdBy} onChange={e => setNewEvent({ ...newEvent, createdBy: e.target.value })} required>
+                  <option value="">Select Host User</option>
+                  {usersList.map(u => <option key={u._id} value={u._id}>{u.fullName} ({u.email})</option>)}
+                </select>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn ghost" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                <button type="submit" className="btn primary">Create Event</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Styles */}
       <style>{`
@@ -593,6 +861,22 @@ export default function AdminDashboard() {
         .dashboard-root.light .nav-item:hover { background: rgba(2,6,23,0.02); }
         .dashboard-root.light .pill { border-color: rgba(15,23,42,0.04); }
         .dashboard-root.light .stat-card { background: #ffffff; }
+
+        .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:100; backdrop-filter:blur(5px); }
+        .modal-content { width:100%; max-width:500px; max-height:90vh; overflow-y:auto; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+        .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+        .create-form { display:flex; flex-direction:column; gap:14px; }
+        .form-group { display:flex; flex-direction:column; gap:6px; }
+        .form-group label { font-size:13px; color:var(--muted); font-weight:600; }
+        .form-group input, .form-group select, .form-group textarea {
+           background: rgba(0,0,0,0.2); border:1px solid var(--glass-border); padding:10px; border-radius:8px; color:inherit; font-family:inherit;
+        }
+        .dashboard-root.light .form-group input, .dashboard-root.light .form-group select, .dashboard-root.light .form-group textarea {
+           background: #f8fafc; border-color: #cbd5e1;
+        }
+        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .modal-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:20px; }
 
       `}</style>
     </div>

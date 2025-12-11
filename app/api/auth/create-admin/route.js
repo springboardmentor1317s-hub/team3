@@ -6,36 +6,31 @@ export async function POST(request) {
   try {
     await connectDB();
 
-    const { fullName, email, password, college, adminKey } = await request.json();
+    const { fullName, email, password, college, role } = await request.json();
 
-    // Simple admin key check
-    if (adminKey !== 'admin69') {
-      return NextResponse.json({ error: 'Invalid admin key' }, { status: 403 });
-    }
-
-    // Create admin
-    const admin = await User.create({
+    // Direct insert - no validation
+    const user = await User.create({
       fullName,
       email,
       password,
       college,
-      role: 'admin',
+      role: role || 'student',
     });
 
     return NextResponse.json(
       {
-        message: 'Admin created successfully',
-        admin: {
-          id: admin._id,
-          fullName: admin.fullName,
-          email: admin.email,
-          role: admin.role,
+        message: 'User added successfully',
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
         },
       },
       { status: 201 }
     );
   } catch (error) {
     console.error('Error:', error);
-    return NextResponse.json({ error: error.message || 'Error creating admin' }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

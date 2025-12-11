@@ -39,10 +39,27 @@ export default function Register() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setMsg({ type: "success", text: "Registration successful! Redirecting to login..." });
-      setIsLoading(false);
-    }, 1500);
+    fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName, email, password, college, role }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setMsg({ type: "error", text: data.error });
+        } else {
+          setMsg({ type: "success", text: "Registration successful! Redirecting to login..." });
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1500);
+        }
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setMsg({ type: "error", text: "Connection error" });
+        setIsLoading(false);
+      });
   }
 
   return (

@@ -22,16 +22,28 @@ export default function Login() {
     setMsg({ type: "", text: "" });
     setIsLoading(true);
 
-    setTimeout(() => {
-      if (email === "admin@campus.com" && password === "admin123" && role === "admin") {
-        setMsg({ type: "success", text: "Login successful! Redirecting..." });
-      } else if (email === "student@campus.com" && password === "student123" && role === "student") {
-        setMsg({ type: "success", text: "Login successful! Redirecting..." });
-      } else {
-        setMsg({ type: "error", text: "Invalid credentials. Please try again." });
-      }
-      setIsLoading(false);
-    }, 1000);
+    fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, role }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setMsg({ type: "error", text: data.error });
+        } else {
+          setMsg({ type: "success", text: "Login successful! Redirecting..." });
+          localStorage.setItem('user', JSON.stringify(data.user));
+          setTimeout(() => {
+            window.location.href = role === 'admin' ? '/AdminDashboard' : '/StudentDashboard';
+          }, 1500);
+        }
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setMsg({ type: "error", text: "Connection error" });
+        setIsLoading(false);
+      });
   }
 
   return (
