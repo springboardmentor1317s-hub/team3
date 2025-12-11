@@ -1,4 +1,3 @@
-"use client";
 import React, { useState, useEffect } from "react";
 
 export default function Home() {
@@ -48,35 +47,8 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900">
-      {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-xl border-b border-white/20">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🎓</span>
-            <h1 className="text-white font-bold text-xl">Campus Events</h1>
-          </div>
-          
-          <div className="hidden md:flex items-center gap-8">
-            <a href="/" className="text-white hover:text-emerald-300 transition-colors font-semibold">Home</a>
-            <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
-            <a href="/Home" className="text-gray-300 hover:text-white transition-colors">Explore</a>
-            <a href="/StudentDashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</a>
-            <a href="/AdminDashboard" className="text-gray-300 hover:text-white transition-colors">Admin</a>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <a href="/Login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
-              Login
-            </a>
-            <a href="/Register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold hover:scale-105 transition-all">
-              Sign Up
-            </a>
-          </div>
-        </div>
-      </nav>
-
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4 pt-20">
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden px-4">
         {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute w-96 h-96 bg-emerald-500/30 rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>

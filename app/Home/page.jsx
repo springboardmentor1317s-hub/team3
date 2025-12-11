@@ -1,4 +1,5 @@
-"use client";
+'use client';
+
 import React, { useState, useEffect } from "react";
 
 export default function Home() {
@@ -57,9 +58,9 @@ export default function Home() {
           </div>
           
           <div className="hidden md:flex items-center gap-8">
-            <a href="/" className="text-white hover:text-emerald-300 transition-colors font-semibold">Home</a>
+            <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
             <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
-            <a href="/Home" className="text-gray-300 hover:text-white transition-colors">Explore</a>
+            <a href="/Home" className="text-white font-semibold">Explore</a>
             <a href="/StudentDashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</a>
             <a href="/AdminDashboard" className="text-gray-300 hover:text-white transition-colors">Admin</a>
           </div>
