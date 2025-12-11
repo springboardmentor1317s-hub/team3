@@ -41,6 +41,7 @@ export default function AdminDashboard() {
     totalRegistrations: 0,
     pendingApprovals: 0
   });
+  const [eventsList, setEventsList] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(true);
 

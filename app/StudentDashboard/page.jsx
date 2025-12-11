@@ -1,15 +1,17 @@
 'use client';
 
 import React, { useState } from "react";
-import { 
-  Calendar, Bell, Search, Filter, Star, User, LogOut, Settings, 
-  Home, Ticket, Heart, CheckCircle, Clock, XCircle, MapPin, 
+import {
+  Calendar, Bell, Search, Filter, Star, User, LogOut, Settings,
+  Home, Ticket, Heart, CheckCircle, Clock, XCircle, MapPin,
   Users, TrendingUp, Eye, Download, X, ChevronLeft, ChevronRight,
   Moon, Sun
 } from "lucide-react";
 
 export default function StudentDashboard() {
-  const [user] = useState({ name: "Srushti Sharma", email: "srushti@college.com", college: "MIT College" });
+  const [user, setUser] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -17,6 +19,112 @@ export default function StudentDashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Fetch data
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [usersRes, eventsRes] = await Promise.all([
+          fetch('/api/admin/users'),
+          fetch('/api/admin/events')
+        ]);
+
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          // Simulate login with first user, or specific one
+          const foundUser = data.users?.[0] || { name: "Guest Student", email: "guest@college.com", college: "Guest College", _id: "guest" };
+          setUser(foundUser);
+        }
+
+        if (eventsRes.ok) {
+          const data = await eventsRes.json();
+          setEvents(data.events || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleRegister = async (eventId) => {
+    if (!user || !user._id) return alert("Please login first");
+
+    // Optimistic update
+    const updatedEvents = events.map(e => {
+      if (e._id === eventId) {
+        // Check if already registered
+        if (e.registeredUsers && e.registeredUsers.includes(user._id)) {
+          return e;
+        }
+        return { ...e, registeredUsers: [...(e.registeredUsers || []), user._id], registeredCount: (e.registeredCount || 0) + 1 };
+      }
+      return e;
+    });
+    setEvents(updatedEvents);
+    if (selectedEvent && selectedEvent._id === eventId) {
+      setSelectedEvent(prev => ({ ...prev, registeredUsers: [...(prev.registeredUsers || []), user._id], registeredCount: (prev.registeredCount || 0) + 1 }));
+    }
+
+    try {
+      // In a real app we'd have a specific register endpoint. 
+      // Reuse edit endpoint to add user to array (requires backend to handle $addToSet or we send whole array)
+      // For this demo, we'll try to just update the count/local state logic mostly, 
+      // but to persist we need to send the new registeredUsers array.
+
+      const eventToUpdate = events.find(e => e._id === eventId);
+      const newRegisteredUsers = [...(eventToUpdate.registeredUsers || []), user._id];
+      // dedupe
+      const uniqueUsers = [...new Set(newRegisteredUsers)];
+
+      await fetch(`/api/admin/events/${eventId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registeredUsers: uniqueUsers,
+          registeredCount: uniqueUsers.length
+        })
+      });
+      alert("Registered successfully!");
+    } catch (e) {
+      console.error("Registration failed", e);
+      // Revert if needed
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const updates = {
+      fullName: formData.get("fullName"),
+      college: formData.get("college"),
+    };
+    const password = formData.get("password");
+    if (password) updates.password = password;
+
+    try {
+      const res = await fetch(`/api/users/${user._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser({ ...user, ...data.user });
+        alert("Profile updated successfully!");
+        e.target.reset();
+      } else {
+        alert("Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Update failed", error);
+    }
+  };
+
 
   const categories = [
     { name: "all", icon: "🎯", label: "All Events" },
@@ -28,72 +136,22 @@ export default function StudentDashboard() {
     { name: "arts", icon: "🎨", label: "Arts", color: "orange" }
   ];
 
-  const events = [
-    {
-      id: 1,
-      title: "Hackathon X 2025",
-      college: "IIT Bombay",
-      date: "Dec 15-16, 2025",
-      time: "9:00 AM",
-      location: "Main Auditorium",
-      category: "hackathon",
-      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&h=300&fit=crop",
-      seats: "30/50",
-      trending: true,
-      description: "24-hour coding marathon with amazing prizes"
-    },
-    {
-      id: 2,
-      title: "Cultural Fest 2025",
-      college: "Delhi University",
-      date: "Dec 20-22, 2025",
-      time: "10:00 AM",
-      location: "Open Ground",
-      category: "cultural",
-      image: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&h=300&fit=crop",
-      seats: "200/300",
-      recommended: true,
-      description: "Three days of music, dance, and celebration"
-    },
-    {
-      id: 3,
-      title: "Sports Championship",
-      college: "MIT College",
-      date: "Dec 18, 2025",
-      time: "7:00 AM",
-      location: "Sports Complex",
-      category: "sports",
-      image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=400&h=300&fit=crop",
-      seats: "150/200",
-      description: "Inter-college sports competition"
-    },
-    {
-      id: 4,
-      title: "AI & ML Workshop",
-      college: "NIT Trichy",
-      date: "Dec 25, 2025",
-      time: "2:00 PM",
-      location: "Tech Block",
-      category: "workshop",
-      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=400&h=300&fit=crop",
-      seats: "45/60",
-      trending: true,
-      description: "Learn cutting-edge AI techniques"
-    }
-  ];
+  // Derived stats
+  const registeredEvents = events.filter(ev => ev.registeredUsers?.includes(user?._id)).map(ev => ({
+    ...ev,
+    registeredDate: "Recently",
+    status: 'approved'
+  }));
 
-  const registeredEvents = [
-    { ...events[0], status: "approved", registeredDate: "Dec 1, 2025" },
-    { ...events[1], status: "pending", registeredDate: "Dec 5, 2025" },
-    { ...events[2], status: "approved", registeredDate: "Nov 28, 2025" }
-  ];
+  const upcomingEventsCount = registeredEvents.filter(ev => new Date(ev.date) > new Date()).length;
+  const pastEventsCount = registeredEvents.filter(ev => new Date(ev.date) < new Date()).length;
 
-  const notifications = [
-    { id: 1, type: "success", message: "Registration approved for Hackathon X", time: "2 hours ago" },
-    { id: 2, type: "info", message: "New event published: Tech Summit 2025", time: "5 hours ago" },
-    { id: 3, type: "warning", message: "Event reminder: Cultural Fest tomorrow", time: "1 day ago" },
-    { id: 4, type: "error", message: "Registration rejected for Debate Competition", time: "2 days ago" }
-  ];
+  const notifications = registeredEvents.slice(0, 5).map((ev, i) => ({
+    id: i,
+    type: 'success',
+    message: `Successfully registered for ${ev.title}`,
+    time: 'Recently'
+  }));
 
   const getCategoryColor = (category) => {
     const colors = {
@@ -119,7 +177,7 @@ export default function StudentDashboard() {
   const filteredEvents = events.filter(event => {
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.college.toLowerCase().includes(searchQuery.toLowerCase());
+      event.college.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -127,6 +185,9 @@ export default function StudentDashboard() {
   const cardBg = darkMode ? "bg-white/10 backdrop-blur-xl border-white/20" : "bg-white border-gray-200";
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
   const textSecondary = darkMode ? "text-gray-300" : "text-gray-600";
+
+  if (loading) return <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>Loading Campus Events...</div>;
+  if (!user) return <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>Please log in to continue.</div>;
 
   return (
     <div className={`min-h-screen ${bgClass} transition-colors duration-300`}>
@@ -137,7 +198,7 @@ export default function StudentDashboard() {
             <span className="text-2xl">🎓</span>
             <h1 className={`font-bold text-xl ${textPrimary}`}>Campus Events</h1>
           </a>
-          
+
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
             <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
@@ -145,7 +206,7 @@ export default function StudentDashboard() {
             <a href="/StudentDashboard" className="text-white font-semibold">Dashboard</a>
             <a href="/AdminDashboard" className="text-gray-300 hover:text-white transition-colors">Admin</a>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <a href="/Login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Logout
@@ -158,7 +219,7 @@ export default function StudentDashboard() {
         <div className="mb-8">
           <h2 className={`text-2xl font-bold ${textPrimary}`}>CampusEventHub</h2>
         </div>
-        
+
         <nav className="space-y-2">
           <button onClick={() => setCurrentView("feed")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === "feed" ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white" : `${textSecondary} hover:bg-white/10`}`}>
             <Home size={20} />
@@ -176,7 +237,7 @@ export default function StudentDashboard() {
             <Heart size={20} />
             <span>Favorites</span>
           </button>
-          <button className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${textSecondary} hover:bg-white/10`}>
+          <button onClick={() => setCurrentView("settings")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${currentView === "settings" ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white" : `${textSecondary} hover:bg-white/10`}`}>
             <Settings size={20} />
             <span>Settings</span>
           </button>
@@ -231,7 +292,7 @@ export default function StudentDashboard() {
                 <Bell size={20} className={textPrimary} />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              
+
               {showNotifications && (
                 <div className={`absolute right-0 mt-2 w-80 ${cardBg} border rounded-2xl shadow-2xl p-4 max-h-96 overflow-y-auto`}>
                   <div className="flex items-center justify-between mb-4">
@@ -252,10 +313,10 @@ export default function StudentDashboard() {
 
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-full flex items-center justify-center text-white font-bold">
-                {user.name.charAt(0)}
+                {user.fullName?.charAt(0) || 'U'}
               </div>
               <div className="text-right">
-                <p className={`text-sm font-semibold ${textPrimary}`}>{user.name}</p>
+                <p className={`text-sm font-semibold ${textPrimary}`}>{user.fullName}</p>
                 <p className="text-xs text-gray-500">{user.college}</p>
               </div>
             </div>
@@ -266,7 +327,7 @@ export default function StudentDashboard() {
           {currentView === "feed" && (
             <>
               <div className="bg-gradient-to-r from-emerald-600/30 to-teal-600/30 backdrop-blur-sm rounded-3xl p-8 border border-emerald-500/30 mb-8">
-                <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Welcome back, {user.name.split(' ')[0]}! 👋</h1>
+                <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Welcome back, {user.fullName?.split(' ')[0]}! 👋</h1>
                 <p className={textSecondary}>Here are the latest events happening across colleges!</p>
               </div>
 
@@ -278,9 +339,9 @@ export default function StudentDashboard() {
                     </div>
                     <TrendingUp size={20} className="text-green-400" />
                   </div>
-                  <h3 className={`text-3xl font-bold ${textPrimary}`}>8</h3>
+                  <h3 className={`text-3xl font-bold ${textPrimary}`}>{registeredEvents.length}</h3>
                   <p className={textSecondary}>Events Registered</p>
-                  <p className="text-sm text-green-400 mt-2">+2 this month</p>
+                  <p className="text-sm text-green-400 mt-2">Active participation</p>
                 </div>
 
                 <div className={`${cardBg} border rounded-2xl p-6`}>
@@ -290,9 +351,9 @@ export default function StudentDashboard() {
                     </div>
                     <Clock size={20} className="text-yellow-400" />
                   </div>
-                  <h3 className={`text-3xl font-bold ${textPrimary}`}>3</h3>
+                  <h3 className={`text-3xl font-bold ${textPrimary}`}>{upcomingEventsCount}</h3>
                   <p className={textSecondary}>Upcoming Events</p>
-                  <p className="text-sm text-yellow-400 mt-2">Next: Tomorrow</p>
+                  <p className="text-sm text-yellow-400 mt-2">Don't miss out!</p>
                 </div>
 
                 <div className={`${cardBg} border rounded-2xl p-6`}>
@@ -302,15 +363,15 @@ export default function StudentDashboard() {
                     </div>
                     <Star size={20} className="text-yellow-400 fill-yellow-400" />
                   </div>
-                  <h3 className={`text-3xl font-bold ${textPrimary}`}>12</h3>
+                  <h3 className={`text-3xl font-bold ${textPrimary}`}>{pastEventsCount}</h3>
                   <p className={textSecondary}>Events Attended</p>
-                  <p className="text-sm text-emerald-400 mt-2">450 XP Earned</p>
+                  <p className="text-sm text-emerald-400 mt-2">Keep learning</p>
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEvents.map(event => (
-                  <div key={event.id} className={`${cardBg} border rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer group`} onClick={() => setSelectedEvent(event)}>
+                  <div key={event._id} className={`${cardBg} border rounded-2xl overflow-hidden hover:scale-105 transition-all cursor-pointer group`} onClick={() => setSelectedEvent(event)}>
                     <div className="relative h-48">
                       <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
@@ -323,11 +384,11 @@ export default function StudentDashboard() {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="p-4">
                       <h3 className={`text-lg font-bold ${textPrimary} mb-2`}>{event.title}</h3>
                       <p className={`text-sm ${textSecondary} mb-3`}>{event.college}</p>
-                      
+
                       <div className="space-y-2 mb-4">
                         <div className={`flex items-center gap-2 text-sm ${textSecondary}`}>
                           <Calendar size={16} />
@@ -342,15 +403,15 @@ export default function StudentDashboard() {
                       <div className="mb-4">
                         <div className="flex justify-between text-xs text-gray-500 mb-2">
                           <span>Seats Filled</span>
-                          <span>{event.seats}</span>
+                          <span>{event.registeredCount || 0}/{event.totalSeats}</span>
                         </div>
                         <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-emerald-600 to-teal-600" style={{width: `${(parseInt(event.seats.split('/')[0]) / parseInt(event.seats.split('/')[1])) * 100}%`}}></div>
+                          <div className="h-full bg-gradient-to-r from-emerald-600 to-teal-600" style={{ width: `${((event.registeredCount || 0) / (event.totalSeats || 1)) * 100}%` }}></div>
                         </div>
                       </div>
 
-                      <button className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold hover:scale-105 transition-all">
-                        Register Now
+                      <button onClick={(e) => { e.stopPropagation(); handleRegister(event._id); }} className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold hover:scale-105 transition-all">
+                        {event.registeredUsers?.includes(user._id) ? "Registered" : "Register Now"}
                       </button>
                     </div>
                   </div>
@@ -364,9 +425,9 @@ export default function StudentDashboard() {
               <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>My Registered Events</h2>
               <div className="space-y-4">
                 {registeredEvents.map(event => (
-                  <div key={event.id} className={`${cardBg} border rounded-2xl p-6 flex items-center gap-6`}>
+                  <div key={event._id} className={`${cardBg} border rounded-2xl p-6 flex items-center gap-6`}>
                     <img src={event.image} alt={event.title} className="w-32 h-32 object-cover rounded-xl" />
-                    
+
                     <div className="flex-1">
                       <div className="flex items-start justify-between mb-2">
                         <div>
@@ -377,7 +438,7 @@ export default function StudentDashboard() {
                           {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
                         </span>
                       </div>
-                      
+
                       <div className={`grid grid-cols-2 gap-4 text-sm ${textSecondary} mb-4`}>
                         <div className="flex items-center gap-2">
                           <Calendar size={16} />
@@ -446,6 +507,33 @@ export default function StudentDashboard() {
               </div>
             </div>
           )}
+
+          {currentView === "settings" && (
+            <div className="max-w-2xl mx-auto">
+              <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Account Settings</h2>
+              <div className={`${cardBg} border rounded-2xl p-8`}>
+                <form onSubmit={handleUpdateProfile} className="space-y-6">
+                  <div>
+                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>Full Name</label>
+                    <input name="fullName" defaultValue={user.fullName} className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200'} focus:ring-2 focus:ring-emerald-500 outline-none`} />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>College</label>
+                    <input name="college" defaultValue={user.college} className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200'} focus:ring-2 focus:ring-emerald-500 outline-none`} />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>New Password</label>
+                    <input name="password" type="password" placeholder="Leave blank to keep current" className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-200'} focus:ring-2 focus:ring-emerald-500 outline-none`} />
+                  </div>
+                  <div className="pt-4">
+                    <button type="submit" className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold hover:opacity-90 transition-opacity">
+                      Update Profile
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -493,7 +581,7 @@ export default function StudentDashboard() {
                   <Users size={20} />
                   <div>
                     <p className="text-xs text-gray-500">Seats</p>
-                    <p className="font-semibold">{selectedEvent.seats}</p>
+                    <p className="font-semibold">{selectedEvent.registeredCount || 0}/{selectedEvent.totalSeats}</p>
                   </div>
                 </div>
               </div>
@@ -503,8 +591,8 @@ export default function StudentDashboard() {
                 <p className={textSecondary}>{selectedEvent.description}</p>
               </div>
 
-              <button className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold text-lg hover:scale-105 transition-all shadow-lg shadow-emerald-500/50">
-                Register Now
+              <button onClick={() => handleRegister(selectedEvent._id)} className="w-full py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold text-lg hover:scale-105 transition-all shadow-lg shadow-emerald-500/50">
+                {selectedEvent.registeredUsers?.includes(user._id) ? "Already Registered" : "Register Now"}
               </button>
             </div>
           </div>

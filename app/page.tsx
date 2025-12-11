@@ -55,7 +55,7 @@ export default function Home() {
             <span className="text-2xl">🎓</span>
             <h1 className="text-white font-bold text-xl">Campus Events</h1>
           </div>
-          
+
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-white hover:text-emerald-300 transition-colors font-semibold">Home</a>
             <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
@@ -63,9 +63,9 @@ export default function Home() {
             <a href="/StudentDashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</a>
             <a href="/AdminDashboard" className="text-gray-300 hover:text-white transition-colors">Admin</a>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <a href="/Login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
+            <a href="/login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Login
             </a>
             <a href="/Register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold hover:scale-105 transition-all">
@@ -80,25 +80,25 @@ export default function Home() {
         {/* Animated Background */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute w-96 h-96 bg-emerald-500/30 rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
-          <div className="absolute w-96 h-96 bg-teal-500/30 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute w-96 h-96 bg-teal-500/30 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
 
         <div className={`relative z-10 max-w-6xl mx-auto text-center transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <div className="inline-block mb-6 px-4 py-2 bg-emerald-500/20 backdrop-blur-sm rounded-full border border-emerald-500/30">
             <span className="text-emerald-300 text-sm font-semibold">✨ Welcome to Campus Events</span>
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
             Discover & Connect with<br />
             <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent">
               Amazing Campus Events
             </span>
           </h1>
-          
+
           <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
             Your gateway to unforgettable experiences, networking, and growth. Find, register, and thrive with thousands of students.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button className="group px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full font-semibold shadow-lg hover:shadow-emerald-500/50 hover:scale-105 transition-all duration-300 flex items-center gap-2">
               Browse Events
@@ -145,20 +145,20 @@ export default function Home() {
           <div className="relative">
             {/* Slider Container */}
             <div className="relative overflow-hidden rounded-3xl">
-              <div 
+              <div
                 className="flex transition-transform duration-700 ease-out"
                 style={{ transform: `translateX(-${currentSlide * 100}%)` }}
               >
                 {events.map((event, index) => (
                   <div key={index} className="min-w-full px-2">
                     <div className="relative h-96 md:h-[500px] rounded-2xl overflow-hidden group">
-                      <img 
-                        src={event.image} 
+                      <img
+                        src={event.image}
                         alt={event.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent"></div>
-                      
+
                       <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12">
                         <span className="inline-block px-4 py-1 bg-emerald-500/80 backdrop-blur-sm rounded-full text-sm font-semibold text-white mb-4">
                           {event.category}
@@ -179,13 +179,13 @@ export default function Home() {
             </div>
 
             {/* Navigation Buttons */}
-            <button 
+            <button
               onClick={prevSlide}
               className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all hover:scale-110"
             >
               ←
             </button>
-            <button 
+            <button
               onClick={nextSlide}
               className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-all hover:scale-110"
             >
@@ -198,9 +198,8 @@ export default function Home() {
                 <button
                   key={index}
                   onClick={() => setCurrentSlide(index)}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    index === currentSlide ? 'w-8 bg-emerald-500' : 'w-2 bg-gray-600 hover:bg-gray-500'
-                  }`}
+                  className={`h-2 rounded-full transition-all duration-300 ${index === currentSlide ? 'w-8 bg-emerald-500' : 'w-2 bg-gray-600 hover:bg-gray-500'
+                    }`}
                 ></button>
               ))}
             </div>
