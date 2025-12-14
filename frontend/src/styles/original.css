@@ -1103,6 +1103,9 @@ nav ul li a:hover::after {
 
 .admin-header {
     margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .admin-header h1 {

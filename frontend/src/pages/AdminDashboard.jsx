@@ -35,10 +35,12 @@ export default function AdminDashboard() {
       <div className="admin-dashboard-wrapper">
 
         <div className="admin-header">
-          <h1>Admin Dashboard</h1>
-          <p>Manage your events and monitor participant performance</p>
+          <div>
+            <h1>Admin Dashboard</h1>
+            <p>Manage your events and monitor participant performance</p>
+          </div>
+          <div className="btn" onClick={() => navigate('/create-event')}>Create Event</div>
         </div>
-
         <div className="admin-metrics">
           <div className="metric-card metric-card-1">
             <div className="metric-icon"><FaCalendarAlt size={28} /></div>
