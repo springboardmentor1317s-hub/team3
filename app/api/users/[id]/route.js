@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 export async function PUT(request, { params }) {
     try {
         await connectDB();
-        const { id } = params;
+        const { id } = await params;
         const { fullName, college, password } = await request.json();
 
         const updateData = { fullName, college };
@@ -28,6 +28,23 @@ export async function PUT(request, { params }) {
         }
 
         return NextResponse.json({ message: 'Profile updated successfully', user: updatedUser });
+    } catch (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request, { params }) {
+    try {
+        await connectDB();
+        const { id } = await params;
+
+        const deletedUser = await User.findByIdAndDelete(id);
+
+        if (!deletedUser) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ message: 'User deleted successfully' });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

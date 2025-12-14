@@ -6,7 +6,7 @@ export async function PUT(request, { params }) {
   try {
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const updateData = await request.json();
 
     const event = await Event.findByIdAndUpdate(id, updateData, { new: true });
@@ -25,7 +25,7 @@ export async function DELETE(request, { params }) {
   try {
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     const event = await Event.findByIdAndDelete(id);
 

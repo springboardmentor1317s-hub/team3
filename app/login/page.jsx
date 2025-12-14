@@ -1,9 +1,13 @@
 'use client';
+import Link from "next/link";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Mail, Lock, User, Shield } from "lucide-react";
 
 export default function Login() {
+  const router = useRouter();
   const [role, setRole] = useState("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,9 +38,17 @@ export default function Login() {
         } else {
           setMsg({ type: "success", text: "Login successful! Redirecting..." });
           localStorage.setItem('user', JSON.stringify(data.user));
+          if (data.token) {
+            localStorage.setItem('token', data.token);
+          }
           setTimeout(() => {
-            window.location.href = role === 'admin' ? '/AdminDashboard' : '/StudentDashboard';
+            if (role === "admin") {
+              router.replace("/admin-dashboard");
+            } else {
+              router.replace("/student-dashboard");
+            }
           }, 1500);
+
         }
         setIsLoading(false);
       })
@@ -55,28 +67,26 @@ export default function Login() {
             <span className="text-2xl">🎓</span>
             <h1 className="text-white font-bold text-xl">Campus Events</h1>
           </a>
-          
+
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
-            <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
-            <a href="/Home" className="text-gray-300 hover:text-white transition-colors">Explore</a>
-            <a href="/Register" className="text-gray-300 hover:text-white transition-colors">Register</a>
+            <Link href="/event" className="text-gray-300 hover:text-white transition-colors">Events</Link>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <a href="/Login" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold">
+            <Link href="/login" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold">
               Login
-            </a>
-            <a href="/Register" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
+            </Link>
+            <Link href="/register" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Sign Up
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
-        <div className="absolute w-96 h-96 bg-teal-500/20 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse" style={{animationDelay: '1s'}}></div>
+        <div className="absolute w-96 h-96 bg-teal-500/20 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
@@ -93,11 +103,10 @@ export default function Login() {
             <button
               type="button"
               onClick={() => handleRole("student")}
-              className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
-                role === "student"
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/50"
-                  : "bg-white/10 text-gray-300 hover:bg-white/20"
-              }`}
+              className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${role === "student"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/50"
+                : "bg-white/10 text-gray-300 hover:bg-white/20"
+                }`}
             >
               <User size={18} />
               Student
@@ -105,11 +114,10 @@ export default function Login() {
             <button
               type="button"
               onClick={() => handleRole("admin")}
-              className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
-                role === "admin"
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/50"
-                  : "bg-white/10 text-gray-300 hover:bg-white/20"
-              }`}
+              className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${role === "admin"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/50"
+                : "bg-white/10 text-gray-300 hover:bg-white/20"
+                }`}
             >
               <Shield size={18} />
               Admin
@@ -208,27 +216,29 @@ export default function Login() {
           <div className="grid grid-cols-2 gap-3 mb-6">
             <button
               type="button"
+              onClick={() => signIn('google', { callbackUrl: '/student-dashboard' })}
               className="py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-all duration-300 hover:scale-105 flex items-center justify-center group"
               title="Continue with Google"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z"/>
-                <path fill="#34A853" d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573905 19.834192,20.9995801 L16.0407269,18.0125889 Z"/>
-                <path fill="#4A90E2" d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z"/>
-                <path fill="#FBBC05" d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z"/>
+                <path fill="#EA4335" d="M5.26620003,9.76452941 C6.19878754,6.93863203 8.85444915,4.90909091 12,4.90909091 C13.6909091,4.90909091 15.2181818,5.50909091 16.4181818,6.49090909 L19.9090909,3 C17.7818182,1.14545455 15.0545455,0 12,0 C7.27006974,0 3.1977497,2.69829785 1.23999023,6.65002441 L5.26620003,9.76452941 Z" />
+                <path fill="#34A853" d="M16.0407269,18.0125889 C14.9509167,18.7163016 13.5660892,19.0909091 12,19.0909091 C8.86648613,19.0909091 6.21911939,17.076871 5.27698177,14.2678769 L1.23746264,17.3349879 C3.19279051,21.2936293 7.26500293,24 12,24 C14.9328362,24 17.7353462,22.9573905 19.834192,20.9995801 L16.0407269,18.0125889 Z" />
+                <path fill="#4A90E2" d="M19.834192,20.9995801 C22.0291676,18.9520994 23.4545455,15.903663 23.4545455,12 C23.4545455,11.2909091 23.3454545,10.5272727 23.1818182,9.81818182 L12,9.81818182 L12,14.4545455 L18.4363636,14.4545455 C18.1187732,16.013626 17.2662994,17.2212117 16.0407269,18.0125889 L19.834192,20.9995801 Z" />
+                <path fill="#FBBC05" d="M5.27698177,14.2678769 C5.03832634,13.556323 4.90909091,12.7937589 4.90909091,12 C4.90909091,11.2182781 5.03443647,10.4668121 5.26620003,9.76452941 L1.23999023,6.65002441 C0.43658717,8.26043162 0,10.0753848 0,12 C0,13.9195484 0.444780743,15.7301709 1.23746264,17.3349879 L5.27698177,14.2678769 Z" />
               </svg>
             </button>
-            
+
             <button
               type="button"
+              onClick={() => window.location.href = '/api/auth/signin/azure-ad'}
               className="py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl transition-all duration-300 hover:scale-105 flex items-center justify-center group"
               title="Continue with Microsoft"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#f25022" d="M0 0h11.377v11.372H0z"/>
-                <path fill="#00a4ef" d="M12.623 0H24v11.372H12.623z"/>
-                <path fill="#7fba00" d="M0 12.623h11.377V24H0z"/>
-                <path fill="#ffb900" d="M12.623 12.623H24V24H12.623z"/>
+                <path fill="#f25022" d="M0 0h11.377v11.372H0z" />
+                <path fill="#00a4ef" d="M12.623 0H24v11.372H12.623z" />
+                <path fill="#7fba00" d="M0 12.623h11.377V24H0z" />
+                <path fill="#ffb900" d="M12.623 12.623H24V24H12.623z" />
               </svg>
             </button>
           </div>

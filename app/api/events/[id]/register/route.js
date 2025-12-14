@@ -3,7 +3,7 @@ import Event from '@/models/Event';
 import User from '@/models/User';
 import { NextResponse } from 'next/server';
 
-// Register user for event
+// register user for event
 export async function POST(request, { params }) {
   try {
     await connectDB();
@@ -43,7 +43,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Register user
+    // register user
     event.registeredUsers.push(userId);
     event.registeredCount += 1;
     await event.save();

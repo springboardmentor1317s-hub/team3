@@ -36,6 +36,12 @@ const UserSchema = new mongoose.Schema(
         ref: 'Event',
       },
     ],
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Event',
+      },
+    ],
   },
   { timestamps: true }
 );

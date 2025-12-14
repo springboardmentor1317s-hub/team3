@@ -1,6 +1,9 @@
 import connectDB from '@/lib/mongodb';
 import User from '@/models/User';
 import { NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // In production, use environment variable
 
 export async function POST(request) {
   try {
@@ -18,7 +21,7 @@ export async function POST(request) {
 
     // Find user by email
     const user = await User.findOne({ email }).select('+password');
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
@@ -42,9 +45,17 @@ export async function POST(request) {
       );
     }
 
+    // Generate Token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
     return NextResponse.json(
       {
         message: 'Login successful',
+        token,
         user: {
           id: user._id,
           fullName: user.fullName,
@@ -63,3 +74,4 @@ export async function POST(request) {
     );
   }
 }
+

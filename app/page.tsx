@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import Link from "next/link";
 import React, { useState, useEffect } from "react";
 
 export default function Home() {
@@ -58,19 +59,16 @@ export default function Home() {
 
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-white hover:text-emerald-300 transition-colors font-semibold">Home</a>
-            <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
-            <a href="/Home" className="text-gray-300 hover:text-white transition-colors">Explore</a>
-            <a href="/StudentDashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</a>
-            <a href="/AdminDashboard" className="text-gray-300 hover:text-white transition-colors">Admin</a>
+            <a href="/event" className="text-gray-300 hover:text-white transition-colors">Events</a>
           </div>
 
           <div className="flex items-center gap-3">
-            <a href="/login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
+            <Link href="/login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Login
-            </a>
-            <a href="/Register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold hover:scale-105 transition-all">
+            </Link>
+            <Link href="/register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold hover:scale-105 transition-all">
               Sign Up
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
@@ -256,9 +254,11 @@ export default function Home() {
           <div className="bg-gradient-to-r from-emerald-600/30 to-teal-600/30 backdrop-blur-sm rounded-3xl p-12 border border-emerald-500/30">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Ready to Get Started?</h2>
             <p className="text-gray-300 text-lg mb-8">Join thousands of students discovering amazing events every day</p>
-            <button className="inline-block px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full font-semibold shadow-lg hover:shadow-emerald-500/50 hover:scale-105 transition-all duration-300">
-              Create Your Account
-            </button>
+            <Link href="/register">
+  <button className="inline-block px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full font-semibold shadow-lg hover:shadow-emerald-500/50 hover:scale-105 transition-all duration-300">
+    Create Your Account
+  </button>
+</Link>
           </div>
         </div>
       </section>

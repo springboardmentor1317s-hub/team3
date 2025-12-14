@@ -20,7 +20,7 @@ export async function POST(request) {
   try {
     await connectDB();
 
-    const { title, description, category, date, time, location, college, totalSeats, createdBy } = await request.json();
+    const { title, description, category, date, time, location, college, totalSeats, createdBy, registrationStartDate, registrationEndDate } = await request.json();
 
     const event = await Event.create({
       title,
@@ -33,6 +33,8 @@ export async function POST(request) {
       totalSeats: totalSeats || 100,
       createdBy,
       status: 'active',
+      registrationStartDate,
+      registrationEndDate,
     });
 
     return NextResponse.json({ message: 'Event created', event }, { status: 201 });

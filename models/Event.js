@@ -60,6 +60,14 @@ const EventSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    registrationStartDate: {
+      type: Date,
+      required: [true, 'Please provide registration start date'],
+    },
+    registrationEndDate: {
+      type: Date,
+      required: [true, 'Please provide registration end date'],
+    },
   },
   { timestamps: true }
 );

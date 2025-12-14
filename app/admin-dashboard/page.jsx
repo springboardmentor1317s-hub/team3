@@ -26,13 +26,18 @@ import {
   X
 } from "lucide-react";
 
+import { useRouter } from "next/navigation";
+
 export default function AdminDashboard() {
-  const [user] = useState({ name: "Admin User", email: "admin@campus.com" });
+  const router = useRouter();
+  const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState("overview");
   const [darkMode, setDarkMode] = useState(true);
   const [showSidebar, setShowSidebar] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
 
   // State for real data
   const [statsData, setStatsData] = useState({
@@ -43,10 +48,12 @@ export default function AdminDashboard() {
   });
   const [eventsList, setEventsList] = useState([]);
   const [usersList, setUsersList] = useState([]);
+  const [registrationsList, setRegistrationsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Create Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -56,42 +63,107 @@ export default function AdminDashboard() {
     location: "",
     college: "",
     totalSeats: 100,
+    registrationStartDate: "",
+    registrationEndDate: "",
     createdBy: "" // Will be selected from users list
   });
 
+  // Fetch data function
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const [meRes, statsRes, eventsRes, usersRes, regsRes] = await Promise.all([
+        fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/stats'),
+        fetch('/api/admin/events'),
+        fetch('/api/admin/users'),
+        fetch('/api/admin/registrations')
+      ]);
+
+      if (meRes.ok) {
+        const data = await meRes.json();
+        setUser(data.user);
+      } else {
+        window.location.href = "/login";
+        return;
+      }
+
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        setStatsData(data);
+      }
+
+      if (eventsRes.ok) {
+        const data = await eventsRes.json();
+        setEventsList(data.events || []);
+      }
+
+      if (usersRes.ok) {
+        const data = await usersRes.json();
+        setUsersList(data.users || []);
+      }
+
+      if (regsRes.ok) {
+        const data = await regsRes.json();
+        setRegistrationsList(data.registrations || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch data on mount
   React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [statsRes, eventsRes, usersRes] = await Promise.all([
-          fetch('/api/admin/stats'),
-          fetch('/api/admin/events'),
-          fetch('/api/admin/users')
-        ]);
-
-        if (statsRes.ok) {
-          const data = await statsRes.json();
-          setStatsData(data);
-        }
-
-        if (eventsRes.ok) {
-          const data = await eventsRes.json();
-          setEventsList(data.events || []);
-        }
-
-        if (usersRes.ok) {
-          const data = await usersRes.json();
-          setUsersList(data.users || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
   }, []);
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    console.log("Updating profile for user ID:", user?._id);
+    const formData = new FormData(e.target);
+    const updates = {
+      fullName: formData.get("fullName"),
+      college: formData.get("college"),
+    };
+    const password = formData.get("password");
+    if (password) updates.password = password;
+
+    try {
+      if (!user?._id) {
+        console.error("User ID is missing!");
+        alert("Error: User ID missing");
+        return;
+      }
+      const res = await fetch(`/api/users/${user._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      console.log("Update response status:", res.status);
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser({ ...user, ...data.user });
+        alert("Profile updated successfully!");
+        e.target.reset();
+      } else {
+        const errData = await res.json();
+        console.error("Update failed response:", errData);
+        alert(`Failed to update profile: ${errData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error("Update failed network error", error);
+    }
+  };
 
   const handleDeleteEvent = async (id) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
@@ -107,9 +179,19 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteUser = async (id) => {
-    // Placeholder for user deletion if API exists, or just UI removal for now
-    if (!confirm("User deletion is not fully implemented yet. Remove from UI?")) return;
-    setUsersList(usersList.filter(u => u._id !== id));
+    if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setUsersList(usersList.filter(u => u._id !== id));
+        setStatsData(prev => ({ ...prev, activeUsers: prev.activeUsers - 1 }));
+        alert("User deleted successfully");
+      } else {
+        alert("Failed to delete user");
+      }
+    } catch (error) {
+      console.error("Failed to delete user", error);
+    }
   };
 
   const stats = [
@@ -125,6 +207,8 @@ export default function AdminDashboard() {
 
   // Filter for pending approvals
   const pendingApprovals = eventsList.filter(ev => ev.status === 'pending');
+  const pendingRegistrations = registrationsList.filter(r => r.status === 'pending');
+  const totalPending = pendingApprovals.length + pendingRegistrations.length;
 
   const handleApproveEvent = async (id, approve = true) => {
     try {
@@ -136,13 +220,10 @@ export default function AdminDashboard() {
       });
 
       if (res.ok) {
-        // Update local state
         setEventsList(eventsList.map(ev => ev._id === id ? { ...ev, status } : ev));
-        // Update stats
         setStatsData(prev => ({
           ...prev,
           pendingApprovals: prev.pendingApprovals - 1,
-          totalEvents: approve ? prev.totalEvents : prev.totalEvents // total events remains same, active might change if we tracked it separately
         }));
       }
     } catch (error) {
@@ -150,7 +231,30 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCreateSubmit = async (e) => {
+  const handleApproveRegistration = async (id, approve = true) => {
+    try {
+      const status = approve ? 'approved' : 'rejected';
+      const res = await fetch(`/api/admin/registrations/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+
+      if (res.ok) {
+        setRegistrationsList(registrationsList.map(r => r._id === id ? { ...r, status } : r));
+        setStatsData(prev => ({
+          ...prev,
+          // Optimistically update totalRegistrations if approved? Maybe not needed for main stats yet
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to update registration status", error);
+    }
+  };
+
+
+
+  const handleCreateEvent = async (e) => {
     e.preventDefault();
     try {
       // Default to first user if no creator selected (fallback)
@@ -171,7 +275,7 @@ export default function AdminDashboard() {
         setStatsData(prev => ({ ...prev, totalEvents: prev.totalEvents + 1 }));
         setShowCreateModal(false);
         setNewEvent({
-          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, createdBy: ""
+          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, registrationStartDate: "", registrationEndDate: "", createdBy: ""
         });
         alert("Event created successfully!");
       } else {
@@ -180,6 +284,46 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Failed to create event", error);
     }
+  };
+
+  const handleUpdateEvent = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/admin/events/${editingEvent._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEvent),
+      });
+      if (res.ok) {
+        setShowCreateModal(false);
+        setEditingEvent(null);
+        setNewEvent({ title: "", date: "", time: "", location: "", category: "hackathon", description: "", image: "" });
+        fetchData();
+        alert("Event updated successfully!");
+      } else {
+        alert("Failed to update event");
+      }
+    } catch (error) {
+      console.error("Error updating event", error);
+    }
+  };
+
+  const handleEditClick = (event) => {
+    setNewEvent({
+      ...event,
+      date: new Date(event.date).toISOString().split('T')[0],
+      registrationStartDate: event.registrationStartDate ? new Date(event.registrationStartDate).toISOString().split('T')[0] : '',
+      registrationEndDate: event.registrationEndDate ? new Date(event.registrationEndDate).toISOString().split('T')[0] : '',
+      createdBy: event.createdBy?._id || event.createdBy || ""
+    });
+    setEditingEvent(event);
+    setShowCreateModal(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.replace("/login");
   };
 
   // Derived Activity Log
@@ -223,15 +367,12 @@ export default function AdminDashboard() {
           <div className="hidden md:flex items-center gap-8">
             <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
             <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
-            <a href="/Home" className="text-gray-300 hover:text-white transition-colors">Explore</a>
-            <a href="/StudentDashboard" className="text-gray-300 hover:text-white transition-colors">Student</a>
-            <a href="/AdminDashboard" className="text-white font-semibold">Admin</a>
           </div>
 
           <div className="flex items-center gap-3">
-            <a href="/Login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
+            <button onClick={handleLogout} className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Logout
-            </a>
+            </button>
           </div>
         </div>
       </nav>
@@ -257,18 +398,18 @@ export default function AdminDashboard() {
           </button>
           <button className={`nav-item ${currentView === "approvals" ? "active" : ""}`} onClick={() => setCurrentView("approvals")}>
             <CheckCircle className="nav-icon" /> <span>Approvals</span>
-            <span className="badge">24</span>
+            {totalPending > 0 && <span className="badge">{totalPending}</span>}
           </button>
           <button className={`nav-item ${currentView === "analytics" ? "active" : ""}`} onClick={() => setCurrentView("analytics")}>
             <TrendingUp className="nav-icon" /> <span>Analytics</span>
           </button>
-          <button className="nav-item">
+          <button className={`nav-item ${currentView === "settings" ? "active" : ""}`} onClick={() => setCurrentView("settings")}>
             <Settings className="nav-icon" /> <span>Settings</span>
           </button>
         </nav>
 
-        <div className="sidebar-bottom">
-          <button className="nav-item logout">
+        <div className="logout-container">
+          <button className="nav-item logout" onClick={handleLogout}>
             <LogOut className="nav-icon" /> <span>Logout</span>
           </button>
         </div>
@@ -300,10 +441,10 @@ export default function AdminDashboard() {
 
             <div className="profile">
               <div className="profile-info">
-                <div className="profile-name">{user.name}</div>
+                <div className="profile-name">{user?.fullName || "Admin"}</div>
                 <div className="profile-role">Administrator</div>
               </div>
-              <div className="avatar">{user.name.charAt(0)}</div>
+              <div className="avatar">{user?.fullName?.charAt(0) || "A"}</div>
             </div>
           </div>
         </header>
@@ -342,7 +483,7 @@ export default function AdminDashboard() {
                 <div className="card recent-events">
                   <div className="card-head">
                     <h3>Recent Events</h3>
-                    <button className="btn primary small">
+                    <button className="btn primary small" onClick={() => setShowCreateModal(true)}>
                       <Plus /> <span>Add Event</span>
                     </button>
                   </div>
@@ -421,9 +562,52 @@ export default function AdminDashboard() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <button className="btn ghost">
-                  <Filter /> <span>Filter</span>
-                </button>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="search-input"
+                    style={{
+                      width: 'auto',
+                      paddingLeft: '12px',
+                      border: '2px solid #6B7280', // Thicker border
+                      backgroundColor: darkMode ? '#1F2937' : '#FFFFFF', // White bg in light mode
+                      color: darkMode ? '#F9FAFB' : '#111827',
+                      fontWeight: '600', // Bolder text
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="all">📂 All Categories</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Culture">Culture</option>
+                    <option value="Academic">Academic</option>
+                    <option value="Business">Business</option>
+                    <option value="Workshop">Workshop</option>
+                  </select>
+
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="search-input"
+                    style={{
+                      width: 'auto',
+                      paddingLeft: '12px',
+                      border: '2px solid #6B7280',
+                      backgroundColor: darkMode ? '#1F2937' : '#FFFFFF',
+                      color: darkMode ? '#F9FAFB' : '#111827',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="all">📊 All Status</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="pending">Pending</option>
+                  </select>
+                </div>
               </div>
 
               <div className="card table-card">
@@ -440,23 +624,29 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {eventsList.map(ev => (
-                      <tr key={ev._id}>
-                        <td className="ev-title">{ev.title}</td>
-                        <td>{ev.category}</td>
-                        <td>{ev.date}</td>
-                        <td>{ev.registeredCount || 0}/{ev.totalSeats}</td>
-                        <td className="ev-rev">{ev.revenue || "Free"}</td>
-                        <td><span className={`pill ${getStatusColor(ev.status)}`}>{ev.status}</span></td>
-                        <td>
-                          <div className="row-actions">
-                            <button className="icon-btn small" title="View"><Eye /></button>
-                            <button className="icon-btn small" title="Edit"><Edit /></button>
-                            <button className="icon-btn small danger" title="Delete" onClick={() => handleDeleteEvent(ev._id)}><Trash2 /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {eventsList
+                      .filter(ev => {
+                        const matchesSearch = ev.title.toLowerCase().includes(searchQuery.toLowerCase());
+                        const matchesCategory = filterCategory === 'all' || ev.category === filterCategory;
+                        const matchesStatus = filterStatus === 'all' || ev.status === filterStatus;
+                        return matchesSearch && matchesCategory && matchesStatus;
+                      })
+                      .map(ev => (
+                        <tr key={ev._id}>
+                          <td className="ev-title">{ev.title}</td>
+                          <td>{ev.category}</td>
+                          <td>{ev.date}</td>
+                          <td>{ev.registeredCount || 0}/{ev.totalSeats}</td>
+                          <td className="ev-rev">{ev.revenue || "Free"}</td>
+                          <td><span className={`pill ${getStatusColor(ev.status)}`}>{ev.status}</span></td>
+                          <td>
+                            <div className="actions-cell">
+                              <button className="btn icon-btn edit" onClick={() => handleEditClick(ev)}><Edit size={16} /></button>
+                              <button className="btn icon-btn delete" onClick={() => handleDeleteEvent(ev._id)}><Trash2 size={16} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -473,7 +663,8 @@ export default function AdminDashboard() {
               </div>
 
               <div className="approvals-list">
-                {pendingApprovals.length === 0 && <div className="card" style={{ padding: 20 }}>No pending approvals</div>}
+                <h3 className="mb-4 text-xl font-bold">Event Requests</h3>
+                {pendingApprovals.length === 0 && <div className="card" style={{ padding: 20 }}>No pending event requests</div>}
                 {pendingApprovals.map(a => (
                   <div className="approval-row card" key={a._id}>
                     <div className="approval-left">
@@ -488,6 +679,28 @@ export default function AdminDashboard() {
                       <div className="time-txt">{new Date(a.createdAt).toLocaleDateString()}</div>
                       <button className="btn success ghost" onClick={() => handleApproveEvent(a._id, true)}><CheckCircle /> Approve</button>
                       <button className="btn danger ghost" onClick={() => handleApproveEvent(a._id, false)}><XCircle /> Reject</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="approvals-list mt-8">
+                <h3 className="mb-4 text-xl font-bold">Registration Requests</h3>
+                {pendingRegistrations.length === 0 && <div className="card" style={{ padding: 20 }}>No pending registrations</div>}
+                {pendingRegistrations.map(a => (
+                  <div className="approval-row card" key={a._id}>
+                    <div className="approval-left">
+                      <div className="avatar-lg bg-gradient-to-r from-blue-500 to-cyan-500">{a.user?.fullName?.charAt(0) || '?'}</div>
+                      <div>
+                        <div className="approval-name">{a.user?.fullName}</div>
+                        <div className="approval-sub">Registered for: <strong>{a.event?.title}</strong></div>
+                        <div className="approval-sub">Email: {a.user?.email}</div>
+                      </div>
+                    </div>
+                    <div className="approval-actions">
+                      <div className="time-txt">{new Date(a.createdAt).toLocaleDateString()}</div>
+                      <button className="btn success ghost" onClick={() => handleApproveRegistration(a._id, true)}><CheckCircle /> Accept</button>
+                      <button className="btn danger ghost" onClick={() => handleApproveRegistration(a._id, false)}><XCircle /> Decline</button>
                     </div>
                   </div>
                 ))}
@@ -602,6 +815,30 @@ export default function AdminDashboard() {
               </div>
             </section>
           )}
+          {currentView === "settings" && user && (
+            <section>
+              <div className="section-head">
+                <h2>Profile Settings</h2>
+              </div>
+              <div className="card" style={{ maxWidth: '600px' }}>
+                <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+                  <div className="form-group">
+                    <label>Full Name</label>
+                    <input name="fullName" defaultValue={user.fullName} className="search-input" style={{ width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label>College</label>
+                    <input name="college" defaultValue={user.college} className="search-input" style={{ width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label>New Password</label>
+                    <input name="password" type="password" placeholder="Leave blank to keep current" className="search-input" style={{ width: '100%' }} />
+                  </div>
+                  <button type="submit" className="btn primary">Update Profile</button>
+                </form>
+              </div>
+            </section>
+          )}
         </main>
       </div>
 
@@ -609,10 +846,10 @@ export default function AdminDashboard() {
         <div className="modal-overlay">
           <div className="modal-content card">
             <div className="modal-head">
-              <h2>Create New Event</h2>
-              <button className="icon-btn" onClick={() => setShowCreateModal(false)}><X /></button>
+              <h2>{editingEvent ? "Edit Event" : "Create New Event"}</h2>
+              <button className="close-btn" onClick={() => { setShowCreateModal(false); setEditingEvent(null); setNewEvent({ title: "", date: "", time: "", location: "", category: "hackathon", description: "", image: "" }); }}>&times;</button>
             </div>
-            <form onSubmit={handleCreateSubmit} className="create-form">
+            <form onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent} className="create-form">
               <div className="form-group">
                 <label>Title</label>
                 <input required value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} placeholder="Event Title" />
@@ -636,6 +873,16 @@ export default function AdminDashboard() {
                 <div className="form-group">
                   <label>Time</label>
                   <input type="time" required value={newEvent.time} onChange={e => setNewEvent({ ...newEvent, time: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Registration Start</label>
+                  <input type="date" required value={newEvent.registrationStartDate} onChange={e => setNewEvent({ ...newEvent, registrationStartDate: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Registration End</label>
+                  <input type="date" required value={newEvent.registrationEndDate} onChange={e => setNewEvent({ ...newEvent, registrationEndDate: e.target.value })} />
                 </div>
               </div>
               <div className="form-group">
@@ -662,8 +909,8 @@ export default function AdminDashboard() {
                 </select>
               </div>
               <div className="modal-actions">
-                <button type="button" className="btn ghost" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                <button type="submit" className="btn primary">Create Event</button>
+                <button type="button" className="btn secondary" onClick={() => { setShowCreateModal(false); setEditingEvent(null); }}>Cancel</button>
+                <button type="submit" className="btn primary">{editingEvent ? "Update Event" : "Create Event"}</button>
               </div>
             </form>
           </div>
@@ -694,6 +941,9 @@ export default function AdminDashboard() {
         .dashboard-root.light {
           background: linear-gradient(135deg, #f7fafc 0%, #ecfdf5 50%, #f1f5f9 100%);
           color: #0f172a;
+          --muted: #475569;
+          --glass-border: rgba(0,0,0,0.08);
+          --card-dark: #ffffff;
         }
 
         .sidebar {
@@ -739,7 +989,7 @@ export default function AdminDashboard() {
 
         .sidebar-bottom { margin-top:auto; }
 
-        .main-area { transition: margin-left var(--trans); margin-left: 260px; min-height: 100vh; }
+        .main-area { transition: margin-left var(--trans); margin-left: 260px; min-height: 100vh; padding-top: 80px; }
         .main-area.full { margin-left: 0; }
 
         .topbar {

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from "react";
-import { Eye, EyeOff, Mail, Lock, User, Shield, Building2 } from "lucide-react";
+import Link from "next/link";
+import { Eye, EyeOff, Mail, Lock, User, Shield, Building2, } from "lucide-react";
 
 export default function Register() {
   const [role, setRole] = useState("student");
@@ -73,19 +74,18 @@ export default function Register() {
           </a>
           
           <div className="hidden md:flex items-center gap-8">
-            <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
-            <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
-            <a href="/Home" className="text-gray-300 hover:text-white transition-colors">Explore</a>
-            <a href="/Login" className="text-gray-300 hover:text-white transition-colors">Login</a>
+            <Link href="/" className="text-gray-300 hover:text-white transition-colors">Home</Link>
+            <Link href="/event" className="text-gray-300 hover:text-white transition-colors">Events</Link>
+            <Link href="/Home" className="text-gray-300 hover:text-white transition-colors"></Link>
           </div>
           
           <div className="flex items-center gap-3">
-            <a href="/Login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
+            <Link href="/login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Login
-            </a>
-            <a href="/Register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold">
+            </Link>
+            <Link href="/register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold">
               Sign Up
-            </a>
+            </Link>
           </div>
         </div>
       </nav>

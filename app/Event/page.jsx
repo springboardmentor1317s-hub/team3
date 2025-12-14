@@ -1,95 +1,42 @@
 'use client';
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Calendar, MapPin, Users, Clock, ArrowRight, Filter, Search } from "lucide-react";
 
+import { useRouter } from "next/navigation";
+
 export default function EventPage() {
+  const router = useRouter();
+  const [user, setUser] = useState(null);
   const [events, setEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
 
-  const eventsList = [
-    {
-      id: 1,
-      title: "Hackathon X",
-      description: "24-hour innovation marathon where brilliant minds collaborate to build cutting-edge solutions.",
-      image: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&h=400&fit=crop",
-      date: "Jan 15-16, 2025",
-      location: "Tech Hub, Mumbai",
-      category: "Technology",
-      participants: "500+",
-      color: "purple"
-    },
-    {
-      id: 2,
-      title: "Sports Meet 2025",
-      description: "Cricket, football, badminton, and athletics. Showcase your athletic prowess and compete for glory.",
-      image: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=600&h=400&fit=crop",
-      date: "Feb 20-22, 2025",
-      location: "Sports Complex, Delhi",
-      category: "Sports",
-      participants: "1000+",
-      color: "blue"
-    },
-    {
-      id: 3,
-      title: "National Cultural Fest",
-      description: "Dance, drama, music, and art performances. Celebrate diversity and express your creative spirit.",
-      image: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=600&h=400&fit=crop",
-      date: "Mar 10-12, 2025",
-      location: "Cultural Center, Bangalore",
-      category: "Culture",
-      participants: "750+",
-      color: "pink"
-    },
-    {
-      id: 4,
-      title: "Debate Championship",
-      description: "Battle of ideas across varied topics. Showcase communication skills and critical thinking abilities.",
-      image: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=600&h=400&fit=crop",
-      date: "Mar 25, 2025",
-      location: "Convention Hall, Pune",
-      category: "Academic",
-      participants: "200+",
-      color: "indigo"
-    },
-    {
-      id: 5,
-      title: "AI & ML Workshop",
-      description: "Hands-on sessions on Python, machine learning models, and real-world AI applications.",
-      image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=400&fit=crop",
-      date: "Apr 5-6, 2025",
-      location: "Innovation Lab, Hyderabad",
-      category: "Technology",
-      participants: "300+",
-      color: "purple"
-    },
-    {
-      id: 6,
-      title: "Startup Pitch Battle",
-      description: "Present your innovative business idea to mentors and investors. Win funding and recognition.",
-      image: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=600&h=400&fit=crop",
-      date: "Apr 18, 2025",
-      location: "Startup Hub, Bangalore",
-      category: "Business",
-      participants: "150+",
-      color: "orange"
-    }
-  ];
-
   useEffect(() => {
-    setTimeout(() => {
-      setEvents(eventsList);
-      setIsLoading(false);
-    }, 800);
+    fetchEvents();
   }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch("/api/admin/events");
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data.events || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch events:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const categories = ["all", "Technology", "Sports", "Culture", "Academic", "Business"];
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchQuery.toLowerCase());
+      event.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -113,22 +60,19 @@ export default function EventPage() {
             <span className="text-2xl">🎓</span>
             <h1 className="text-white font-bold text-xl">Campus Events</h1>
           </div>
-          
+
           <div className="hidden md:flex items-center gap-8">
-            <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
-            <a href="/Event" className="text-white font-semibold">Events</a>
-            <a href="/Home" className="text-gray-300 hover:text-white transition-colors">Explore</a>
-            <a href="/StudentDashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</a>
-            <a href="/AdminDashboard" className="text-gray-300 hover:text-white transition-colors">Admin</a>
+            <Link href="/" className="text-gray-300 hover:text-white transition-colors">Home</Link>
+            <Link href="/event" className="text-white font-semibold">Events</Link>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            <a href="/Login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
+            <Link href="/login" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
               Login
-            </a>
-            <a href="/Register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold hover:scale-105 transition-all">
+            </Link>
+            <Link href="/register" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold hover:scale-105 transition-all">
               Sign Up
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
@@ -136,7 +80,7 @@ export default function EventPage() {
       <section className="relative pt-20 pb-16 px-4 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
-          <div className="absolute w-96 h-96 bg-teal-500/20 rounded-full blur-3xl top-0 right-0 animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute w-96 h-96 bg-teal-500/20 rounded-full blur-3xl top-0 right-0 animate-pulse" style={{ animationDelay: '1s' }}></div>
         </div>
 
         <div className="max-w-6xl mx-auto text-center relative z-10">
@@ -172,11 +116,10 @@ export default function EventPage() {
                   <button
                     key={category}
                     onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-3 rounded-xl font-semibold whitespace-nowrap transition-all duration-300 ${
-                      selectedCategory === category
-                        ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
-                        : "bg-white/10 text-gray-300 hover:bg-white/20"
-                    }`}
+                    className={`px-4 py-3 rounded-xl font-semibold whitespace-nowrap transition-all duration-300 ${selectedCategory === category
+                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg"
+                      : "bg-white/10 text-gray-300 hover:bg-white/20"
+                      }`}
                   >
                     {category.charAt(0).toUpperCase() + category.slice(1)}
                   </button>
@@ -199,12 +142,12 @@ export default function EventPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredEvents.map((event) => (
                 <div
-                  key={event.id}
+                  key={event._id}
                   className={`group relative bg-gradient-to-br ${getColorClasses(event.color)} backdrop-blur-sm rounded-2xl border transition-all duration-300 hover:scale-105 overflow-hidden`}
                 >
                   <div className="relative h-48 overflow-hidden">
                     <img
-                      src={event.image}
+                      src={event.image || `https://source.unsplash.com/random/800x600?${event.category}`}
                       alt={event.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />

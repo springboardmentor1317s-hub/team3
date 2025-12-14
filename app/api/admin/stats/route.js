@@ -8,7 +8,7 @@ export async function GET(request) {
     await connectDB();
 
     const totalEvents = await Event.countDocuments();
-    const pendingEvents = await Event.countDocuments({ status: 'pending' });
+    const activeEvents = await Event.countDocuments({ status: 'active' });
     const totalUsers = await User.countDocuments();
     const totalRegistrations = await Event.aggregate([
       { $group: { _id: null, total: { $sum: '$registeredCount' } } }
@@ -18,7 +18,7 @@ export async function GET(request) {
       totalEvents: totalEvents,
       activeUsers: totalUsers,
       totalRegistrations: totalRegistrations[0]?.total || 0,
-      pendingApprovals: pendingEvents,
+      pendingApprovals: activeEvents,
     };
 
     return NextResponse.json(stats);
