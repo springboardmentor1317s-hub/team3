@@ -1,6 +1,7 @@
 import connectDB from '@/lib/mongodb';
 import Event from '@/models/Event';
 import User from '@/models/User';
+import Registration from '@/models/Registration';
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
@@ -8,8 +9,9 @@ export async function GET(request) {
     await connectDB();
 
     const totalEvents = await Event.countDocuments();
-    const activeEvents = await Event.countDocuments({ status: 'active' });
+    const pendingEvents = await Event.countDocuments({ status: 'pending' });
     const totalUsers = await User.countDocuments();
+    const pendingRegistrations = await Registration.countDocuments({ status: 'pending' });
     const totalRegistrations = await Event.aggregate([
       { $group: { _id: null, total: { $sum: '$registeredCount' } } }
     ]);
@@ -18,7 +20,7 @@ export async function GET(request) {
       totalEvents: totalEvents,
       activeUsers: totalUsers,
       totalRegistrations: totalRegistrations[0]?.total || 0,
-      pendingApprovals: activeEvents,
+      pendingApprovals: pendingEvents + pendingRegistrations,
     };
 
     return NextResponse.json(stats);

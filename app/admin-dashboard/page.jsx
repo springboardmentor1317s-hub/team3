@@ -23,7 +23,8 @@ import {
   Moon,
   Sun,
   Menu,
-  X
+  X,
+  Bell
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -49,6 +50,8 @@ export default function AdminDashboard() {
   const [eventsList, setEventsList] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [registrationsList, setRegistrationsList] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Create Modal State
@@ -63,6 +66,8 @@ export default function AdminDashboard() {
     location: "",
     college: "",
     totalSeats: 100,
+    teamSizeMin: 1,
+    teamSizeMax: 1,
     registrationStartDate: "",
     registrationEndDate: "",
     createdBy: "" // Will be selected from users list
@@ -114,6 +119,9 @@ export default function AdminDashboard() {
         const data = await regsRes.json();
         setRegistrationsList(data.registrations || []);
       }
+
+      // Fetch notifications for admin (will be fetched after user is set)
+      // This will be handled in a separate useEffect
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
     } finally {
@@ -125,6 +133,24 @@ export default function AdminDashboard() {
   React.useEffect(() => {
     fetchData();
   }, []);
+
+  // Fetch notifications when user is loaded
+  React.useEffect(() => {
+    const fetchNotifications = async () => {
+      if (user && user._id) {
+        try {
+          const notifsRes = await fetch(`/api/notifications?userId=${user._id}`);
+          if (notifsRes.ok) {
+            const data = await notifsRes.json();
+            setNotifications(data.notifications || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch notifications:', error);
+        }
+      }
+    };
+    fetchNotifications();
+  }, [user]);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -195,10 +221,42 @@ export default function AdminDashboard() {
   };
 
   const stats = [
-    { icon: Calendar, label: "Total Events", value: statsData.totalEvents.toString(), change: "Updated now", color: "purple", trend: "up" },
-    { icon: Users, label: "Active Users", value: statsData.activeUsers.toString(), change: "Total registered", color: "blue", trend: "up" },
-    { icon: CheckCircle, label: "Total Registrations", value: statsData.totalRegistrations.toString(), change: "All time", color: "green", trend: "up" },
-    { icon: Clock, label: "Pending Approvals", value: statsData.pendingApprovals.toString(), change: "Action needed", color: "orange", trend: "alert" }
+    {
+      icon: Calendar,
+      label: "Total Events",
+      value: statsData.totalEvents.toString(),
+      change: "Updated now",
+      color: "purple",
+      trend: "up",
+      onClick: () => setCurrentView("events")
+    },
+    {
+      icon: Users,
+      label: "Active Users",
+      value: statsData.activeUsers.toString(),
+      change: "Total registered",
+      color: "blue",
+      trend: "up",
+      onClick: () => setCurrentView("users")
+    },
+    {
+      icon: CheckCircle,
+      label: "Total Registrations",
+      value: statsData.totalRegistrations.toString(),
+      change: "All time",
+      color: "green",
+      trend: "up",
+      onClick: () => setCurrentView("approvals")
+    },
+    {
+      icon: Clock,
+      label: "Pending Approvals",
+      value: statsData.pendingApprovals.toString(),
+      change: "Action needed",
+      color: "orange",
+      trend: "alert",
+      onClick: () => setCurrentView("approvals")
+    }
   ];
 
   const events = eventsList; // Use fetched events
@@ -256,6 +314,9 @@ export default function AdminDashboard() {
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
+    if (new Date(newEvent.date) < new Date().setHours(0, 0, 0, 0)) return alert("Event date cannot be in the past.");
+    if (new Date(newEvent.registrationEndDate) >= new Date(newEvent.date)) return alert("Registration must end before the event date.");
+
     try {
       // Default to first user if no creator selected (fallback)
       const payload = {
@@ -275,7 +336,7 @@ export default function AdminDashboard() {
         setStatsData(prev => ({ ...prev, totalEvents: prev.totalEvents + 1 }));
         setShowCreateModal(false);
         setNewEvent({
-          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, registrationStartDate: "", registrationEndDate: "", createdBy: ""
+          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", createdBy: ""
         });
         alert("Event created successfully!");
       } else {
@@ -288,6 +349,9 @@ export default function AdminDashboard() {
 
   const handleUpdateEvent = async (e) => {
     e.preventDefault();
+    if (new Date(newEvent.date) < new Date().setHours(0, 0, 0, 0)) return alert("Event date cannot be in the past.");
+    if (new Date(newEvent.registrationEndDate) >= new Date(newEvent.date)) return alert("Registration must end before the event date.");
+
     try {
       const res = await fetch(`/api/admin/events/${editingEvent._id}`, {
         method: "PUT",
@@ -297,7 +361,7 @@ export default function AdminDashboard() {
       if (res.ok) {
         setShowCreateModal(false);
         setEditingEvent(null);
-        setNewEvent({ title: "", date: "", time: "", location: "", category: "hackathon", description: "", image: "" });
+        setNewEvent({ title: "", date: "", time: "", location: "", category: "hackathon", description: "", image: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1 });
         fetchData();
         alert("Event updated successfully!");
       } else {
@@ -311,6 +375,8 @@ export default function AdminDashboard() {
   const handleEditClick = (event) => {
     setNewEvent({
       ...event,
+      teamSizeMin: event.teamSizeMin || 1,
+      teamSizeMax: event.teamSizeMax || 1,
       date: new Date(event.date).toISOString().split('T')[0],
       registrationStartDate: event.registrationStartDate ? new Date(event.registrationStartDate).toISOString().split('T')[0] : '',
       registrationEndDate: event.registrationEndDate ? new Date(event.registrationEndDate).toISOString().split('T')[0] : '',
@@ -430,6 +496,58 @@ export default function AdminDashboard() {
           </div>
 
           <div className="topbar-right">
+            {/* Notification Bell */}
+            <div style={{ position: 'relative' }}>
+              <button
+                className="icon-btn"
+                onClick={() => setShowNotifications(!showNotifications)}
+                aria-label="Notifications"
+                title="Notifications"
+              >
+                <Bell />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="notification-badge">{notifications.filter(n => !n.read).length}</span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="notifications-dropdown">
+                  <div className="notifications-header">
+                    <h3>Notifications</h3>
+                    <button onClick={() => setShowNotifications(false)} className="icon-btn small">×</button>
+                  </div>
+                  <div className="notifications-list">
+                    {notifications.length === 0 ? (
+                      <div className="notification-item">No notifications</div>
+                    ) : (
+                      notifications.slice(0, 10).map(notif => (
+                        <div
+                          key={notif._id}
+                          className={`notification-item ${notif.read ? 'read' : 'unread'}`}
+                          onClick={async () => {
+                            if (!notif.read) {
+                              await fetch(`/api/notifications/${notif._id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ read: true })
+                              });
+                              setNotifications(notifications.map(n =>
+                                n._id === notif._id ? { ...n, read: true } : n
+                              ));
+                            }
+                          }}
+                        >
+                          <div className="notification-title">{notif.title}</div>
+                          <div className="notification-message">{notif.message}</div>
+                          <div className="notification-time">{new Date(notif.createdAt).toLocaleString()}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               className="icon-btn"
               onClick={() => setDarkMode(!darkMode)}
@@ -458,7 +576,12 @@ export default function AdminDashboard() {
                 {stats.map((stat, i) => {
                   const Icon = stat.icon;
                   return (
-                    <div className="card stat-card" key={i}>
+                    <div
+                      className="card stat-card"
+                      key={i}
+                      onClick={stat.onClick}
+                      style={{ cursor: stat.onClick ? 'pointer' : 'default' }}
+                    >
                       <div className="stat-head">
                         <div className={`stat-icon ${stat.color}`}>
                           <Icon />
@@ -836,6 +959,30 @@ export default function AdminDashboard() {
                   </div>
                   <button type="submit" className="btn primary">Update Profile</button>
                 </form>
+
+                {/* Role Switcher */}
+                <div style={{ marginTop: 30, paddingTop: 20, borderTop: '1px solid var(--glass-border)' }}>
+                  <h3 style={{ marginBottom: 15 }}>Dashboard Access</h3>
+                  <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 15 }}>Switch between Admin and Student dashboards</p>
+                  {user.availableRoles && user.availableRoles.length > 1 ? (
+                    <button
+                      className="btn primary"
+                      onClick={() => {
+                        if (user.role === 'admin') {
+                          router.push('/student-dashboard');
+                        } else {
+                          router.push('/admin-dashboard');
+                        }
+                      }}
+                    >
+                      {user.role === 'admin' ? 'Switch to Student Dashboard' : 'Switch to Admin Dashboard'}
+                    </button>
+                  ) : (
+                    <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+                      You only have access to the {user.role} dashboard. Contact an administrator to request additional access.
+                    </p>
+                  )}
+                </div>
               </div>
             </section>
           )}
@@ -847,7 +994,7 @@ export default function AdminDashboard() {
           <div className="modal-content card">
             <div className="modal-head">
               <h2>{editingEvent ? "Edit Event" : "Create New Event"}</h2>
-              <button className="close-btn" onClick={() => { setShowCreateModal(false); setEditingEvent(null); setNewEvent({ title: "", date: "", time: "", location: "", category: "hackathon", description: "", image: "" }); }}>&times;</button>
+              <button className="close-btn" onClick={() => { setShowCreateModal(false); setEditingEvent(null); setNewEvent({ title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", createdBy: "" }); }}>&times;</button>
             </div>
             <form onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent} className="create-form">
               <div className="form-group">
@@ -857,18 +1004,21 @@ export default function AdminDashboard() {
               <div className="form-group">
                 <label>Category</label>
                 <select value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value })}>
-                  <option>Technology</option>
-                  <option>Sports</option>
-                  <option>Culture</option>
-                  <option>Academic</option>
-                  <option>Business</option>
-                  <option>Workshop</option>
+                  <option value="Technology">Technology</option>
+                  <option value="Sports">Sports</option>
+                  <option value="Cultural">Cultural</option>
+                  <option value="Academic">Academic</option>
+                  <option value="Business">Business</option>
+                  <option value="Workshop">Workshop</option>
+                  <option value="Music">Music</option>
+                  <option value="Arts">Arts</option>
+                  <option value="Hackathon">Hackathon</option>
                 </select>
               </div>
               <div className="form-row">
                 <div className="form-group">
                   <label>Date</label>
-                  <input type="date" required value={newEvent.date} onChange={e => setNewEvent({ ...newEvent, date: e.target.value })} />
+                  <input type="date" min={new Date().toISOString().split('T')[0]} required value={newEvent.date} onChange={e => setNewEvent({ ...newEvent, date: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>Time</label>
@@ -878,11 +1028,18 @@ export default function AdminDashboard() {
               <div className="form-row">
                 <div className="form-group">
                   <label>Registration Start</label>
-                  <input type="date" required value={newEvent.registrationStartDate} onChange={e => setNewEvent({ ...newEvent, registrationStartDate: e.target.value })} />
+                  <input type="date" min={new Date().toISOString().split('T')[0]} required value={newEvent.registrationStartDate} onChange={e => setNewEvent({ ...newEvent, registrationStartDate: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>Registration End</label>
-                  <input type="date" required value={newEvent.registrationEndDate} onChange={e => setNewEvent({ ...newEvent, registrationEndDate: e.target.value })} />
+                  <input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    max={newEvent.date ? new Date(new Date(newEvent.date).getTime() - 86400000).toISOString().split('T')[0] : undefined}
+                    required
+                    value={newEvent.registrationEndDate}
+                    onChange={e => setNewEvent({ ...newEvent, registrationEndDate: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="form-group">
@@ -896,6 +1053,16 @@ export default function AdminDashboard() {
               <div className="form-group">
                 <label>Total Seats</label>
                 <input type="number" required value={newEvent.totalSeats} onChange={e => setNewEvent({ ...newEvent, totalSeats: e.target.value })} />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Min Team Size</label>
+                  <input type="number" min="1" required value={newEvent.teamSizeMin} onChange={e => setNewEvent({ ...newEvent, teamSizeMin: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Max Team Size</label>
+                  <input type="number" min="1" required value={newEvent.teamSizeMax} onChange={e => setNewEvent({ ...newEvent, teamSizeMax: e.target.value })} />
+                </div>
               </div>
               <div className="form-group">
                 <label>Description</label>
@@ -1120,14 +1287,38 @@ export default function AdminDashboard() {
         .create-form { display:flex; flex-direction:column; gap:14px; }
         .form-group { display:flex; flex-direction:column; gap:6px; }
         .form-group label { font-size:13px; color:var(--muted); font-weight:600; }
-        .form-group input, .form-group select, .form-group textarea {
+        .form-group input, .form-group textarea {
            background: rgba(0,0,0,0.2); border:1px solid var(--glass-border); padding:10px; border-radius:8px; color:inherit; font-family:inherit;
         }
-        .dashboard-root.light .form-group input, .dashboard-root.light .form-group select, .dashboard-root.light .form-group textarea {
+        .form-group select {
+           background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:10px; border-radius:8px; color:inherit; font-family:inherit; cursor:pointer;
+        }
+        .form-group select option {
+           background: #0b1220; color: #e6eef6;
+        }
+        .dashboard-root.light .form-group input, .dashboard-root.light .form-group textarea {
            background: #f8fafc; border-color: #cbd5e1;
+        }
+        .dashboard-root.light .form-group select {
+           background: #ffffff; border-color: #94a3b8; color: #0f172a;
+        }
+        .dashboard-root.light .form-group select option {
+           background: #ffffff; color: #0f172a;
         }
         .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         .modal-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:20px; }
+
+        .notification-badge { position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+        .notifications-dropdown { position:absolute; top:calc(100% + 10px); right:0; width:350px; max-height:500px; background:var(--card-dark); border:1px solid var(--glass-border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.3); z-index:1000; overflow:hidden; }
+        .notifications-header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--glass-border); }
+        .notifications-header h3 { margin:0; font-size:16px; font-weight:700; }
+        .notifications-list { max-height:400px; overflow-y:auto; }
+        .notification-item { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.02); cursor:pointer; transition:background var(--trans); }
+        .notification-item:hover { background:rgba(255,255,255,0.02); }
+        .notification-item.unread { background:rgba(16,185,129,0.05); border-left:3px solid var(--accent-emerald); }
+        .notification-title { font-weight:700; margin-bottom:4px; }
+        .notification-message { font-size:13px; color:var(--muted); margin-bottom:4px; }
+        .notification-time { font-size:11px; color:var(--muted); }
 
       `}</style>
     </div>

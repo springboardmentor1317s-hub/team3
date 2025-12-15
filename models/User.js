@@ -30,6 +30,11 @@ const UserSchema = new mongoose.Schema(
       enum: ['student', 'admin'],
       default: 'student',
     },
+    availableRoles: {
+      type: [String],
+      enum: ['student', 'admin'],
+      default: function () { return [this.role]; },
+    },
     registeredEvents: [
       {
         type: mongoose.Schema.Types.ObjectId,

@@ -12,7 +12,7 @@ const EventSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['Technology', 'Sports', 'Culture', 'Academic', 'Business', 'Workshop'],
+      enum: ['Technology', 'Sports', 'Cultural', 'Academic', 'Business', 'Workshop', 'Music', 'Arts', 'Hackathon'],
       required: true,
     },
     date: {
@@ -39,6 +39,16 @@ const EventSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Please provide total seats'],
       default: 100,
+    },
+    teamSizeMin: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+    teamSizeMax: {
+      type: Number,
+      default: 1,
+      min: 1,
     },
     registeredCount: {
       type: Number,

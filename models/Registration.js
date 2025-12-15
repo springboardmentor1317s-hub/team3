@@ -17,6 +17,13 @@ const RegistrationSchema = new mongoose.Schema(
             enum: ['pending', 'approved', 'rejected'],
             default: 'pending',
         },
+        teamName: {
+            type: String,
+            required: false,
+        },
+        teamMembers: [{
+            type: String, // Storing names or emails
+        }],
         // Timestamp is handled automatically by timestamps option
     },
     { timestamps: true }

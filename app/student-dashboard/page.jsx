@@ -28,6 +28,11 @@ export default function StudentDashboard() {
   const [myRegistrations, setMyRegistrations] = useState([]);
   const [calendarDate, setCalendarDate] = useState(new Date());
 
+  // Team Registration State
+  const [teamName, setTeamName] = useState("");
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [memberInput, setMemberInput] = useState("");
+
   // Initial Auth Check and Data Fetching
   useEffect(() => {
     const fetchData = async () => {
@@ -83,8 +88,23 @@ export default function StudentDashboard() {
   const handleRegisterClick = (event) => {
     if (!user) return alert("Please login first");
     if (event.registeredUsers?.includes(user._id)) return alert("Already registered!");
+
     setRegistrationEvent(event);
+    setTeamName(""); // Reset
+    setTeamMembers([]); // Reset
+    setMemberInput(""); // Reset
     setShowRegisterModal(true);
+  };
+
+  const addTeamMember = () => {
+    if (!memberInput.trim()) return;
+    if (teamMembers.includes(memberInput.trim())) return alert("Member already added");
+    setTeamMembers([...teamMembers, memberInput.trim()]);
+    setMemberInput("");
+  };
+
+  const removeTeamMember = (index) => {
+    setTeamMembers(teamMembers.filter((_, i) => i !== index));
   };
 
   const handleConfirmRegistration = async () => {
@@ -94,7 +114,12 @@ export default function StudentDashboard() {
       const res = await fetch('/api/registrations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ eventId: registrationEvent._id, userId: user._id })
+        body: JSON.stringify({
+          eventId: registrationEvent._id,
+          userId: user._id,
+          teamName: teamName,
+          teamMembers: teamMembers
+        })
       });
 
       if (res.ok) {
@@ -183,12 +208,15 @@ export default function StudentDashboard() {
 
   const categories = [
     { name: "all", icon: "🎯", label: "All Events" },
-    { name: "cultural", icon: "🎭", label: "Cultural", color: "purple" },
-    { name: "sports", icon: "🏆", label: "Sports", color: "blue" },
-    { name: "hackathon", icon: "💻", label: "Hackathon", color: "cyan" },
-    { name: "workshop", icon: "🎤", label: "Workshop", color: "green" },
-    { name: "music", icon: "🎶", label: "Music", color: "pink" },
-    { name: "arts", icon: "🎨", label: "Arts", color: "orange" }
+    { name: "Cultural", icon: "🎭", label: "Cultural" },
+    { name: "Sports", icon: "🏆", label: "Sports" },
+    { name: "Hackathon", icon: "💻", label: "Hackathon" },
+    { name: "Workshop", icon: "🎤", label: "Workshop" },
+    { name: "Music", icon: "🎶", label: "Music" },
+    { name: "Arts", icon: "🎨", label: "Arts" },
+    { name: "Technology", icon: "💻", label: "Technology" },
+    { name: "Academic", icon: "📚", label: "Academic" },
+    { name: "Business", icon: "💼", label: "Business" }
   ];
 
   // Derived stats
@@ -210,12 +238,15 @@ export default function StudentDashboard() {
 
   const getCategoryColor = (category) => {
     const colors = {
-      hackathon: "bg-cyan-500",
-      cultural: "bg-purple-500",
-      sports: "bg-blue-500",
-      workshop: "bg-green-500",
-      music: "bg-pink-500",
-      arts: "bg-orange-500"
+      Hackathon: "bg-cyan-500",
+      Cultural: "bg-purple-500",
+      Sports: "bg-blue-500",
+      Workshop: "bg-green-500",
+      Music: "bg-pink-500",
+      Arts: "bg-orange-500",
+      Technology: "bg-indigo-500",
+      Academic: "bg-yellow-500",
+      Business: "bg-slate-500"
     };
     return colors[category] || "bg-gray-500";
   };
@@ -341,12 +372,9 @@ export default function StudentDashboard() {
                 className={`px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 appearance-none pr-10 cursor-pointer font-bold shadow-sm ${darkMode ? 'bg-slate-800 border-slate-500 text-white' : 'bg-white border-gray-400 text-gray-900'}`}
               >
                 <option value="all">📂 All Categories</option>
-                <option value="cultural">🎭 Cultural</option>
-                <option value="sports">🏆 Sports</option>
-                <option value="hackathon">💻 Hackathon</option>
-                <option value="workshop">🎤 Workshop</option>
-                <option value="music">🎶 Music</option>
-                <option value="arts">🎨 Arts</option>
+                {categories.filter(c => c.name !== 'all').map(cat => (
+                  <option key={cat.name} value={cat.name}>{cat.icon} {cat.label}</option>
+                ))}
               </select>
               <Filter className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ${darkMode ? 'text-gray-300' : 'text-gray-600'}`} size={20} />
             </div>
@@ -402,7 +430,10 @@ export default function StudentDashboard() {
               </div>
 
               <div className="grid md:grid-cols-3 gap-6 mb-8">
-                <div className={`${cardBg} border rounded-2xl p-6`}>
+                <div
+                  className={`${cardBg} border rounded-2xl p-6 cursor-pointer hover:scale-105 transition-transform`}
+                  onClick={() => setCurrentView("registered")}
+                >
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center">
                       <Ticket size={24} className="text-emerald-400" />
@@ -414,7 +445,10 @@ export default function StudentDashboard() {
                   <p className="text-sm text-green-400 mt-2">Active participation</p>
                 </div>
 
-                <div className={`${cardBg} border rounded-2xl p-6`}>
+                <div
+                  className={`${cardBg} border rounded-2xl p-6 cursor-pointer hover:scale-105 transition-transform`}
+                  onClick={() => setCurrentView("calendar")}
+                >
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center">
                       <Calendar size={24} className="text-teal-400" />
@@ -426,7 +460,10 @@ export default function StudentDashboard() {
                   <p className="text-sm text-yellow-400 mt-2">Don't miss out!</p>
                 </div>
 
-                <div className={`${cardBg} border rounded-2xl p-6`}>
+                <div
+                  className={`${cardBg} border rounded-2xl p-6 cursor-pointer hover:scale-105 transition-transform`}
+                  onClick={() => setCurrentView("registered")}
+                >
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center">
                       <CheckCircle size={24} className="text-cyan-400" />
@@ -646,6 +683,30 @@ export default function StudentDashboard() {
                 </div>
                 <button type="submit" className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold">Update Profile</button>
               </form>
+
+              {/* Role Switcher */}
+              <div className="mt-8 pt-6 border-t" style={{ borderColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}>
+                <h3 className={`text-xl font-bold ${textPrimary} mb-3`}>Dashboard Access</h3>
+                <p className={`${textSecondary} text-sm mb-4`}>Switch between Admin and Student dashboards</p>
+                {user.availableRoles && user.availableRoles.length > 1 ? (
+                  <button
+                    className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"
+                    onClick={() => {
+                      if (user.role === 'admin') {
+                        router.push('/student-dashboard');
+                      } else {
+                        router.push('/admin-dashboard');
+                      }
+                    }}
+                  >
+                    {user.role === 'admin' ? 'Switch to Student Dashboard' : 'Switch to Admin Dashboard'}
+                  </button>
+                ) : (
+                  <p className={`${textSecondary} text-sm`}>
+                    You only have access to the {user.role} dashboard. Contact an administrator to request additional access.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -770,6 +831,53 @@ export default function StudentDashboard() {
                 <p className={`font-semibold ${textPrimary}`}>{registrationEvent.location}</p>
               </div>
             </div>
+
+            {registrationEvent.teamSizeMax > 1 && (
+              <div className="mb-6">
+                <h3 className={`font-bold ${textPrimary} mb-2`}>Team Details</h3>
+                <p className={`text-sm ${textSecondary} mb-4`}>This event allows teams of {registrationEvent.teamSizeMin} to {registrationEvent.teamSizeMax} members (including you).</p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className={`block text-sm font-medium ${textSecondary} mb-1`}>Team Name</label>
+                    <input
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                      placeholder="Enter your team name"
+                      className={`w-full p-3 rounded-xl border ${cardBg} ${textPrimary}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-sm font-medium ${textSecondary} mb-1`}>Add Team Members (Email or Name)</label>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        value={memberInput}
+                        onChange={(e) => setMemberInput(e.target.value)}
+                        placeholder="Member name or email"
+                        className={`flex-1 p-3 rounded-xl border ${cardBg} ${textPrimary}`}
+                      />
+                      <button onClick={addTeamMember} type="button" className="px-4 py-2 bg-emerald-600 text-white rounded-xl">Add</button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className={`flex justify-between items-center p-2 rounded-lg border ${darkMode ? 'border-white/10' : 'border-gray-200'}`}>
+                        <span className={textPrimary}>{user.fullName} (You) - Leader</span>
+                      </div>
+                      {teamMembers.map((m, i) => (
+                        <div key={i} className={`flex justify-between items-center p-2 rounded-lg border ${darkMode ? 'border-white/10' : 'border-gray-200'}`}>
+                          <span className={textPrimary}>{m}</span>
+                          <button onClick={() => removeTeamMember(i)} className="text-red-400 hover:text-red-500"><XCircle size={18} /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Current Total: {teamMembers.length + 1} / {registrationEvent.teamSizeMax}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-4">
               <button onClick={() => setShowRegisterModal(false)} className={`flex-1 py-3 rounded-xl font-semibold border ${darkMode ? 'border-white/10 hover:bg-white/5' : 'border-gray-200 hover:bg-gray-100'} ${textPrimary}`}>
