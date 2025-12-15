@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminCreateEvent from "./pages/AdminCreateEvent";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/student-dashboard" element={<StudentDashboard />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/create-event" element={<AdminCreateEvent />} />
       {/* add other routes as needed */}
     </Routes>
   );
