@@ -34,9 +34,18 @@ export default function AdminDashboard() {
 
       <div className="admin-dashboard-wrapper">
 
+        {/* 🔹 HEADER WITH CREATE EVENT BUTTON */}
         <div className="admin-header">
           <h1>Admin Dashboard</h1>
           <p>Manage your events and monitor participant performance</p>
+
+          <button
+            className="primary-btn"
+            style={{ marginTop: "16px" }}
+            onClick={() => navigate("/admin/create-event")}
+          >
+            Create Event
+          </button>
         </div>
 
         <div className="admin-metrics">
@@ -140,6 +149,7 @@ export default function AdminDashboard() {
             </div>
           </section>
         </div>
+
       </div>
     </div>
   );

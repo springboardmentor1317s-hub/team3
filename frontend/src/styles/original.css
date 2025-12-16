@@ -1602,3 +1602,84 @@ tr:hover {
         grid-template-columns: 1fr;
     }
 }
+/* ===== FIX: ADMIN CREATE EVENT LABEL VISIBILITY ===== */
+
+/* Form labels (Title, Description, Category, etc.) */
+.form-label,
+label {
+    color: #ffffff !important;
+    font-weight: 600;
+}
+
+/* Section headings inside forms */
+.form-title,
+.form-card h2,
+.form-card h3 {
+    color: #ffffff !important;
+}
+
+/* Small helper texts under inputs (if any) */
+.input-help {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Date & time input text */
+input[type="date"],
+input[type="time"] {
+    color: #ffffff !important;
+}
+
+/* Select dropdown text (Category, College, etc.) */
+select {
+    color: #ffffff !important;
+}
+/* ===== ADMIN CREATE EVENT FORM ALIGNMENT ===== */
+
+.admin-event-form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 22px;
+}
+
+/* Make textarea & buttons full width */
+.admin-event-form .full-width {
+    grid-column: 1 / -1;
+}
+
+/* Ensure inputs fill grid properly */
+.admin-event-form input,
+.admin-event-form select,
+.admin-event-form textarea {
+    width: 100%;
+}
+
+/* Date & time side by side */
+.admin-event-form .date-time-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Mobile view */
+@media (max-width: 768px) {
+    .admin-event-form {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-event-form .full-width {
+        grid-column: 1;
+    }
+}
+/* ===== FIX: SELECT / DATE / TIME TEXT VISIBILITY ===== */
+
+/* Dropdown & date/time visible text */
+select,
+input[type="date"],
+input[type="time"] {
+    color: #000000 !important;
+}
+
+/* Options inside dropdown */
+select option {
+    color: #000000;
+}
