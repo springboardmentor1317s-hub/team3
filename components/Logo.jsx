@@ -1,0 +1,32 @@
+import React from 'react';
+
+const Logo = ({ size = 32, className = "" }) => {
+    return (
+        <div className={`bg-white p-2 rounded-xl shadow-xl ${className}`}>
+            <svg
+                width={size}
+                height={size}
+                viewBox="0 0 100 100"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#FF006E" />
+                        <stop offset="50%" stopColor="#FF8500" />
+                        <stop offset="100%" stopColor="#FFD60A" />
+                    </linearGradient>
+                </defs>
+                <circle cx="50" cy="50" r="45" fill="url(#logoGradient)" />
+                <path
+                    d="M50 20 L65 40 L90 45 L70 65 L75 90 L50 75 L25 90 L30 65 L10 45 L35 40 Z"
+                    fill="white"
+                    opacity="0.9"
+                />
+                <circle cx="50" cy="52" r="12" fill="url(#logoGradient)" />
+            </svg>
+        </div>
+    );
+};
+
+export default Logo;

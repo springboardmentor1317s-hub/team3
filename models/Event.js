@@ -25,7 +25,7 @@ const EventSchema = new mongoose.Schema(
     },
     location: {
       type: String,
-      required: [true, 'Please provide event location'],
+      required: false,
     },
     college: {
       type: String,
@@ -37,7 +37,7 @@ const EventSchema = new mongoose.Schema(
     },
     totalSeats: {
       type: Number,
-      required: [true, 'Please provide total seats'],
+      required: false,
       default: 100,
     },
     teamSizeMin: {
@@ -72,11 +72,9 @@ const EventSchema = new mongoose.Schema(
     },
     registrationStartDate: {
       type: Date,
-      required: [true, 'Please provide registration start date'],
     },
     registrationEndDate: {
       type: Date,
-      required: [true, 'Please provide registration end date'],
     },
   },
   { timestamps: true }

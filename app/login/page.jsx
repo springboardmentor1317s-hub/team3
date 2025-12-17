@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Eye, EyeOff, Mail, Lock, User, Shield } from "lucide-react";
+import Logo from "@/components/Logo";
 
 export default function Login() {
   const router = useRouter();
@@ -59,13 +60,13 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-pink-950 to-slate-950 flex items-center justify-center px-4 pt-24 pb-12 relative overflow-hidden">
       {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-xl border-b border-white/20">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🎓</span>
-            <h1 className="text-white font-bold text-xl">Campus Events</h1>
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-pink-600/20 via-purple-600/20 to-orange-600/20 backdrop-blur-2xl border-b border-white/10 shadow-lg">
+        <div className="w-full px-6 py-4 flex items-center justify-between">
+          <a href="/" className="flex items-center gap-3">
+            <Logo size={32} />
+            <h1 className="text-white font-bold text-xl">CampusEventHub</h1>
           </a>
 
           <div className="hidden md:flex items-center gap-8">
@@ -74,7 +75,7 @@ export default function Login() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg font-semibold">
+            <Link href="/login" className="px-4 py-2 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-lg font-semibold shadow-lg shadow-pink-500/30">
               Login
             </Link>
             <Link href="/register" className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
@@ -85,14 +86,14 @@ export default function Login() {
       </nav>
 
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
-        <div className="absolute w-96 h-96 bg-teal-500/20 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute w-96 h-96 bg-pink-500/20 rounded-full blur-3xl -top-48 -left-48 animate-pulse"></div>
+        <div className="absolute w-96 h-96 bg-orange-500/20 rounded-full blur-3xl -bottom-48 -right-48 animate-pulse" style={{ animationDelay: '1s' }}></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
-          <div className="inline-block p-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl mb-4">
-            <span className="text-4xl">🎓</span>
+          <div className="inline-block mb-4">
+            <Logo size={48} className="p-4 bg-gradient-to-r from-pink-600 to-orange-600 rounded-2xl" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
           <p className="text-gray-400">Sign in to access your campus events</p>
@@ -104,7 +105,7 @@ export default function Login() {
               type="button"
               onClick={() => handleRole("student")}
               className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${role === "student"
-                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/50"
+                ? "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/50"
                 : "bg-white/10 text-gray-300 hover:bg-white/20"
                 }`}
             >
@@ -115,7 +116,7 @@ export default function Login() {
               type="button"
               onClick={() => handleRole("admin")}
               className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${role === "admin"
-                ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/50"
+                ? "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/50"
                 : "bg-white/10 text-gray-300 hover:bg-white/20"
                 }`}
             >
@@ -148,7 +149,7 @@ export default function Login() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  className="w-full pl-12 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                 />
               </div>
             </div>
@@ -165,7 +166,7 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-12 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  className="w-full pl-12 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
                 />
                 <button
                   type="button"
@@ -187,7 +188,7 @@ export default function Login() {
                 />
                 <span className="text-gray-300 text-sm group-hover:text-white transition-colors">Remember me</span>
               </label>
-              <a href="/forgot-password" className="text-emerald-400 hover:text-emerald-300 text-sm font-semibold transition-colors">
+              <a href="/forgot-password" className="text-pink-400 hover:text-pink-300 text-sm font-semibold transition-colors">
                 Forgot password?
               </a>
             </div>
@@ -196,7 +197,7 @@ export default function Login() {
               type="button"
               onClick={handleSubmit}
               disabled={isLoading}
-              className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-emerald-500/50 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-pink-500/50 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -246,7 +247,7 @@ export default function Login() {
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
               Don't have an account?{" "}
-              <a href="/register" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+              <a href="/register" className="text-pink-400 hover:text-pink-300 font-semibold transition-colors">
                 Create one
               </a>
             </p>
@@ -270,7 +271,7 @@ export default function Login() {
         </div>
 
         <p className="text-center text-gray-500 text-sm mt-6">
-          Secure login powered by Campus Events Platform
+          Secure login powered by CampusEventHub Platform
         </p>
       </div>
     </div>

@@ -24,10 +24,13 @@ import {
   Sun,
   Menu,
   X,
-  Bell
+  Bell,
+  MapPin
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import Logo from "@/components/Logo";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -70,8 +73,12 @@ export default function AdminDashboard() {
     teamSizeMax: 1,
     registrationStartDate: "",
     registrationEndDate: "",
-    createdBy: "" // Will be selected from users list
+    registrationStartDate: "",
+    registrationEndDate: "",
+    image: "", // Event banner image
+    college: "" // Organizing College
   });
+  const [imagePreview, setImagePreview] = useState("");
 
   // Fetch data function
   const fetchData = async () => {
@@ -246,7 +253,7 @@ export default function AdminDashboard() {
       change: "All time",
       color: "green",
       trend: "up",
-      onClick: () => setCurrentView("approvals")
+      onClick: () => setCurrentView("registrations")
     },
     {
       icon: Clock,
@@ -255,7 +262,7 @@ export default function AdminDashboard() {
       change: "Action needed",
       color: "orange",
       trend: "alert",
-      onClick: () => setCurrentView("approvals")
+      onClick: () => setCurrentView("registrations")
     }
   ];
 
@@ -267,6 +274,12 @@ export default function AdminDashboard() {
   const pendingApprovals = eventsList.filter(ev => ev.status === 'pending');
   const pendingRegistrations = registrationsList.filter(r => r.status === 'pending');
   const totalPending = pendingApprovals.length + pendingRegistrations.length;
+
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const localToday = `${year}-${month}-${day}`;
 
   const handleApproveEvent = async (id, approve = true) => {
     try {
@@ -310,18 +323,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewEvent({ ...newEvent, image: reader.result });
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
 
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
-    if (new Date(newEvent.date) < new Date().setHours(0, 0, 0, 0)) return alert("Event date cannot be in the past.");
-    if (new Date(newEvent.registrationEndDate) >= new Date(newEvent.date)) return alert("Registration must end before the event date.");
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localToday = `${year}-${month}-${day}`;
+
+    if (newEvent.date < localToday) return alert("Event date cannot be in the past.");
+
+    // Registration Validation
+    if (newEvent.registrationEndDate && newEvent.date && newEvent.registrationEndDate > newEvent.date) {
+      return alert("Registration cannot end after the event date.");
+    }
+
+    if (newEvent.registrationStartDate && newEvent.registrationEndDate && newEvent.registrationStartDate > newEvent.registrationEndDate) {
+      return alert("Registration start date cannot be after end date.");
+    }
 
     try {
-      // Default to first user if no creator selected (fallback)
+      // Use current logged-in user as creator
       const payload = {
         ...newEvent,
-        createdBy: newEvent.createdBy || (usersList.length > 0 ? usersList[0]._id : null)
+        createdBy: user?._id || (usersList.length > 0 ? usersList[0]._id : null)
       };
 
       const res = await fetch('/api/admin/events', {
@@ -336,21 +375,38 @@ export default function AdminDashboard() {
         setStatsData(prev => ({ ...prev, totalEvents: prev.totalEvents + 1 }));
         setShowCreateModal(false);
         setNewEvent({
-          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", createdBy: ""
+          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: ""
         });
+        setImagePreview("");
         alert("Event created successfully!");
       } else {
-        alert("Failed to create event");
+        const errorData = await res.json();
+        alert(`Failed to create event: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("Failed to create event", error);
+      alert(`Failed to create event: ${error.message}`);
     }
   };
 
   const handleUpdateEvent = async (e) => {
     e.preventDefault();
-    if (new Date(newEvent.date) < new Date().setHours(0, 0, 0, 0)) return alert("Event date cannot be in the past.");
-    if (new Date(newEvent.registrationEndDate) >= new Date(newEvent.date)) return alert("Registration must end before the event date.");
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const localToday = `${year}-${month}-${day}`;
+
+    if (newEvent.date < localToday) return alert("Event date cannot be in the past.");
+
+    // Registration Validation
+    if (newEvent.registrationEndDate && newEvent.date && newEvent.registrationEndDate > newEvent.date) {
+      return alert("Registration cannot end after the event date.");
+    }
+
+    if (newEvent.registrationStartDate && newEvent.registrationEndDate && newEvent.registrationStartDate > newEvent.registrationEndDate) {
+      return alert("Registration start date cannot be after end date.");
+    }
 
     try {
       const res = await fetch(`/api/admin/events/${editingEvent._id}`, {
@@ -361,7 +417,8 @@ export default function AdminDashboard() {
       if (res.ok) {
         setShowCreateModal(false);
         setEditingEvent(null);
-        setNewEvent({ title: "", date: "", time: "", location: "", category: "hackathon", description: "", image: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1 });
+        setNewEvent({ title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: "" });
+        setImagePreview("");
         fetchData();
         alert("Event updated successfully!");
       } else {
@@ -420,126 +477,91 @@ export default function AdminDashboard() {
     return colors[status] || colors.pending;
   };
 
+  if (loading) return (
+    <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-lg font-medium animate-pulse">Loading Dashboard...</p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className={`dashboard-root ${darkMode ? "dark" : "light"}`}>
+    <div className={`min-h-screen transition-colors duration-300 relative overflow-hidden ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+
+      {/* Aurora Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 90, 0],
+            borderRadius: ["20%", "50%", "20%"]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+          className={`absolute top-[-10%] left-[-10%] w-[500px] h-[500px] blur-[100px] rounded-full mix-blend-screen opacity-50 ${darkMode ? 'bg-purple-600/30' : 'bg-purple-400/40'}`}
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.5, 1],
+            x: [0, 100, 0],
+            y: [0, -50, 0]
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+          className={`absolute top-[20%] right-[-10%] w-[400px] h-[400px] blur-[100px] rounded-full mix-blend-screen opacity-50 ${darkMode ? 'bg-pink-600/20' : 'bg-pink-400/30'}`}
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            x: [0, -100, 0],
+            y: [0, 50, 0]
+          }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+          className={`absolute bottom-[-10%] left-[20%] w-[600px] h-[600px] blur-[100px] rounded-full mix-blend-screen opacity-50 ${darkMode ? 'bg-orange-600/20' : 'bg-orange-400/30'}`}
+        />
+      </div>
+
       {/* Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/10 backdrop-blur-xl border-b border-white/20 w-full">
-        <div className="max-w-full px-4 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🎓</span>
-            <h1 className="text-white font-bold text-xl">Campus Events</h1>
-          </a>
-
-          <div className="hidden md:flex items-center gap-8">
-            <a href="/" className="text-gray-300 hover:text-white transition-colors">Home</a>
-            <a href="/Event" className="text-gray-300 hover:text-white transition-colors">Events</a>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button onClick={handleLogout} className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition-all">
-              Logout
+      <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b shadow-lg transition-all ${darkMode ? "bg-slate-950/70 border-white/10 shadow-black/20" : "bg-white/70 border-white/40 shadow-slate-200/50"}`}>
+        <div className="w-full px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={`p-2 rounded-xl transition-all ${darkMode ? 'hover:bg-white/10 text-white' : 'hover:bg-slate-200 text-slate-700'}`}
+            >
+              <Menu size={24} />
             </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Sidebar */}
-      <aside className={`sidebar ${showSidebar ? "open" : "closed"}`} aria-hidden={!showSidebar} style={{ marginTop: '60px' }}>
-        <div className="sidebar-top">
-          <h2 className="brand">Admin Panel</h2>
-          <button className="icon-btn hide-desktop" onClick={() => setShowSidebar(false)} title="Close sidebar">
-            <X />
-          </button>
-        </div>
-
-        <nav className="nav">
-          <button className={`nav-item ${currentView === "overview" ? "active" : ""}`} onClick={() => setCurrentView("overview")}>
-            <BarChart3 className="nav-icon" /> <span>Overview</span>
-          </button>
-          <button className={`nav-item ${currentView === "events" ? "active" : ""}`} onClick={() => setCurrentView("events")}>
-            <Calendar className="nav-icon" /> <span>Manage Events</span>
-          </button>
-          <button className={`nav-item ${currentView === "users" ? "active" : ""}`} onClick={() => setCurrentView("users")}>
-            <Users className="nav-icon" /> <span>User Management</span>
-          </button>
-          <button className={`nav-item ${currentView === "approvals" ? "active" : ""}`} onClick={() => setCurrentView("approvals")}>
-            <CheckCircle className="nav-icon" /> <span>Approvals</span>
-            {totalPending > 0 && <span className="badge">{totalPending}</span>}
-          </button>
-          <button className={`nav-item ${currentView === "analytics" ? "active" : ""}`} onClick={() => setCurrentView("analytics")}>
-            <TrendingUp className="nav-icon" /> <span>Analytics</span>
-          </button>
-          <button className={`nav-item ${currentView === "settings" ? "active" : ""}`} onClick={() => setCurrentView("settings")}>
-            <Settings className="nav-icon" /> <span>Settings</span>
-          </button>
-        </nav>
-
-        <div className="logout-container">
-          <button className="nav-item logout" onClick={handleLogout}>
-            <LogOut className="nav-icon" /> <span>Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* Main area */}
-      <div className={`main-area ${showSidebar ? "with-sidebar" : "full"}`}>
-        {/* Topbar */}
-        <header className="topbar">
-          <div className="topbar-left">
-            <button className="icon-btn" onClick={() => setShowSidebar(!showSidebar)} title="Toggle sidebar">
-              <Menu />
-            </button>
-            <div>
-              <h1 className="page-title">Admin Dashboard</h1>
-              <p className="page-sub">Manage events and monitor performance</p>
+            <div className="flex items-center gap-3">
+              <Logo size={32} className={`${darkMode ? "bg-gradient-to-br from-pink-500/20 to-orange-500/20 border border-pink-500/30" : "bg-gradient-to-br from-pink-100 to-orange-100 border border-pink-200"}`} />
+              <h1 className={`font-bold text-xl tracking-tight ${darkMode ? "text-white" : "text-slate-900"}`}>Admin Portal</h1>
             </div>
           </div>
 
-          <div className="topbar-right">
-            {/* Notification Bell */}
-            <div style={{ position: 'relative' }}>
-              <button
-                className="icon-btn"
-                onClick={() => setShowNotifications(!showNotifications)}
-                aria-label="Notifications"
-                title="Notifications"
-              >
-                <Bell />
-                {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="notification-badge">{notifications.filter(n => !n.read).length}</span>
-                )}
+          <div className="flex items-center gap-6">
+            <button onClick={() => setDarkMode(!darkMode)} className={`p-2.5 rounded-xl border transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-yellow-400' : 'bg-white border-slate-200 hover:bg-slate-50 text-purple-600'}`}>
+              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
+            <div className="relative">
+              <button onClick={() => setShowNotifications(!showNotifications)} className={`p-2.5 rounded-xl border transition-all relative ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
+                <Bell size={20} />
+                {notifications.filter(n => !n.read).length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
               </button>
 
               {showNotifications && (
-                <div className="notifications-dropdown">
-                  <div className="notifications-header">
-                    <h3>Notifications</h3>
-                    <button onClick={() => setShowNotifications(false)} className="icon-btn small">×</button>
+                <div className={`absolute right-0 mt-4 w-80 rounded-2xl shadow-2xl overflow-hidden border z-50 ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+                  <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-white/10' : 'border-slate-100'}`}>
+                    <h3 className="font-bold">Notifications</h3>
+                    <button onClick={() => setShowNotifications(false)}><X size={16} /></button>
                   </div>
-                  <div className="notifications-list">
+                  <div className="max-h-80 overflow-y-auto p-2">
                     {notifications.length === 0 ? (
-                      <div className="notification-item">No notifications</div>
+                      <div className="p-4 text-center text-sm opacity-50">No notifications</div>
                     ) : (
-                      notifications.slice(0, 10).map(notif => (
-                        <div
-                          key={notif._id}
-                          className={`notification-item ${notif.read ? 'read' : 'unread'}`}
-                          onClick={async () => {
-                            if (!notif.read) {
-                              await fetch(`/api/notifications/${notif._id}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ read: true })
-                              });
-                              setNotifications(notifications.map(n =>
-                                n._id === notif._id ? { ...n, read: true } : n
-                              ));
-                            }
-                          }}
-                        >
-                          <div className="notification-title">{notif.title}</div>
-                          <div className="notification-message">{notif.message}</div>
-                          <div className="notification-time">{new Date(notif.createdAt).toLocaleString()}</div>
+                      notifications.slice(0, 5).map(n => (
+                        <div key={n._id} className={`p-3 rounded-xl mb-1 cursor-pointer transition-colors ${darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'} ${!n.read ? 'bg-pink-500/5 border-l-2 border-pink-500' : ''}`}>
+                          <p className="font-semibold text-sm">{n.title}</p>
+                          <p className="text-xs opacity-70 mt-1">{n.message}</p>
                         </div>
                       ))
                     )}
@@ -548,779 +570,536 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <button
-              className="icon-btn"
-              onClick={() => setDarkMode(!darkMode)}
-              aria-label="Toggle dark mode"
-              title="Toggle dark mode"
-            >
-              {darkMode ? <Sun /> : <Moon />}
-            </button>
-
-            <div className="profile">
-              <div className="profile-info">
-                <div className="profile-name">{user?.fullName || "Admin"}</div>
-                <div className="profile-role">Administrator</div>
+            <div className="flex items-center gap-3 pl-6 border-l border-gray-500/20">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/20">
+                {user?.fullName?.charAt(0) || 'A'}
               </div>
-              <div className="avatar">{user?.fullName?.charAt(0) || "A"}</div>
+              <div className="hidden md:block">
+                <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{user?.fullName}</p>
+                <p className="text-xs text-gray-500">Administrator</p>
+              </div>
             </div>
           </div>
-        </header>
+        </div>
+      </nav>
 
-        {/* Content */}
-        <main className="content">
-          {currentView === "overview" && (
-            <>
-              {/* Stats grid */}
-              <section className="stats-grid">
-                {stats.map((stat, i) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div
-                      className="card stat-card"
+      <div className="flex pt-20 h-screen overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`fixed left-0 top-0 h-full z-40 pt-24 transition-all duration-300 ease-in-out ${showSidebar ? 'w-72 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-full'} ${darkMode ? "bg-slate-950/80 backdrop-blur-xl border-r border-white/10" : "bg-white/80 backdrop-blur-xl border-r border-white/40"}`}>
+          <div className="px-6 py-6 space-y-2 overflow-y-auto h-full pb-24 custom-scrollbar">
+            {[
+              { id: 'overview', icon: BarChart3, label: 'Overview' },
+              { id: 'events', icon: Calendar, label: 'Event Management' },
+              { id: 'users', icon: Users, label: 'User Management' },
+              { id: 'registrations', icon: CheckCircle, label: 'Registrations' },
+              { id: 'analytics', icon: TrendingUp, label: 'Analytics' },
+              { id: 'settings', icon: Settings, label: 'Settings' }
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setCurrentView(item.id)}
+                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 font-medium group ${currentView === item.id
+                  ? "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/30 scale-[1.02]"
+                  : darkMode
+                    ? "text-slate-400 hover:bg-white/10 hover:text-white"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+              >
+                <item.icon size={22} className={currentView === item.id ? "animate-pulse" : "group-hover:scale-110 transition-transform"} />
+                <span>{item.label}</span>
+              </button>
+            ))}
+
+            {/* Logout Button at bottom of sidebar */}
+            <div className="mt-8 pt-8 border-t border-gray-500/10">
+              <button
+                onClick={() => {
+                  localStorage.removeItem("token");
+                  router.push("/login");
+                }}
+                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 font-medium ${darkMode ? "text-red-400 hover:bg-red-500/10" : "text-red-600 hover:bg-red-50"}`}
+              >
+                <LogOut size={22} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content Area - Scrollable */}
+        <main className={`flex-1 overflow-y-auto transition-all duration-300 p-8 pb-20 relative z-10 ${showSidebar ? 'ml-72' : 'ml-0'}`}>
+          <div className="max-w-7xl mx-auto space-y-8">
+
+            {/* Header Section */}
+            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+              <div>
+                <h1 className={`text-4xl font-bold bg-gradient-to-r ${darkMode ? 'from-white via-pink-200 to-orange-200' : 'from-slate-900 via-purple-800 to-slate-900'} bg-clip-text text-transparent mb-2`}>
+                  {currentView === 'overview' ? 'Dashboard Overview' :
+                    currentView === 'events' ? 'Event Management' :
+                      currentView === 'users' ? 'User Directory' :
+                        currentView === 'registrations' ? 'Registration Requests' :
+                          currentView === 'analytics' ? 'Analytics & Insights' :
+                            currentView === 'settings' ? 'Settings' : 'Dashboard'}
+                </h1>
+                <p className={`text-lg ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Manage and monitor your campus events platform.
+                </p>
+              </div>
+              {currentView === 'events' && (
+                <button onClick={() => setShowCreateModal(true)} className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-105 transition-all flex items-center gap-2">
+                  <Plus size={20} /> Create New Event
+                </button>
+              )}
+            </header>
+
+            {currentView === "overview" && (
+              <div className="space-y-8">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {stats.map((stat, i) => (
+                    <motion.div
                       key={i}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className={`relative overflow-hidden rounded-3xl p-6 border cursor-pointer group transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white/70 border-white/50 hover:bg-white/90 shadow-lg'}`}
                       onClick={stat.onClick}
-                      style={{ cursor: stat.onClick ? 'pointer' : 'default' }}
                     >
-                      <div className="stat-head">
-                        <div className={`stat-icon ${stat.color}`}>
-                          <Icon />
-                        </div>
-                        <div className="stat-trend">
-                          {stat.trend === "up" && <TrendingUp />}
-                          {stat.trend === "alert" && <AlertCircle />}
-                        </div>
-                      </div>
-                      <div className="stat-body">
-                        <div className="stat-value">{stat.value}</div>
-                        <div className="stat-label">{stat.label}</div>
-                        <div className={`stat-change ${stat.trend === "alert" ? "alert" : "positive"}`}>{stat.change}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </section>
+                      <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full bg-${stat.color}-500/20 blur-2xl group-hover:bg-${stat.color}-500/30 transition-all`}></div>
 
-              {/* Two columns: recent events & recent activity */}
-              <section className="two-col">
-                <div className="card recent-events">
-                  <div className="card-head">
-                    <h3>Recent Events</h3>
-                    <button className="btn primary small" onClick={() => setShowCreateModal(true)}>
-                      <Plus /> <span>Add Event</span>
+                      <div className="flex items-center gap-4 mb-4 relative z-10">
+                        <div className={`p-3 rounded-xl bg-${stat.color}-500/10 text-${stat.color}-500`}>
+                          <stat.icon size={24} />
+                        </div>
+                        <span className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{stat.label}</span>
+                      </div>
+
+                      <div className="relative z-10">
+                        <h3 className={`text-4xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stat.value}</h3>
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-green-500 flex items-center gap-1 font-medium bg-green-500/10 px-2 py-0.5 rounded-lg">
+                            <TrendingUp size={12} /> {stat.trend === 'up' ? '+' : ''}12%
+                          </span>
+                          <span className={darkMode ? 'text-slate-500' : 'text-slate-400'}>{stat.change}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {currentView === "events" && (
+              <div className={`rounded-3xl border backdrop-blur-xl overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
+                {/* Tool bar */}
+                <div className="p-6 border-b border-gray-500/10 flex flex-col md:flex-row gap-4 justify-between items-center">
+                  <div className="relative w-full md:w-96">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                      type="text"
+                      placeholder="Search events..."
+                      className={`w-full pl-12 pr-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-900/50 border-white/10 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'} focus:ring-2 focus:ring-pink-500 outline-none`}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
+                      <Filter size={20} />
                     </button>
                   </div>
-                  <div className="card-body">
-                    {loading ? <div style={{ padding: 20 }}>Loading...</div> : eventsList.slice(0, 4).map((ev) => (
-                      <div className="list-row" key={ev._id}>
-                        <div>
-                          <div className="list-title">{ev.title}</div>
-                          <div className="list-sub">{ev.category} • {ev.registeredCount || 0} registered</div>
-                        </div>
-                        <div className={`pill ${getStatusColor(ev.status)}`}>{ev.status}</div>
-                      </div>
-                    ))}
-                    {!loading && eventsList.length === 0 && <div style={{ padding: 20 }}>No recent events</div>}
-                  </div>
                 </div>
 
-                <div className="card recent-activity">
-                  <h3>Recent Activity</h3>
-                  <div className="card-body">
-                    {derivedActivity.length === 0 && <div style={{ padding: 10 }}>No recent activity</div>}
-                    {derivedActivity.map((act, idx) => (
-                      <div className="activity-row" key={idx}>
-                        <div className={`act-icon ${act.type}`}><Activity /></div>
-                        <div className="act-body">
-                          <div className="act-message">{act.message}</div>
-                          <div className="act-time">{act.time}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-
-              {/* System health */}
-              <section className="card system-health">
-                <h3>System Health</h3>
-                <div className="health-grid">
-                  <div className="health-item">
-                    <div className="health-label">Server Status</div>
-                    <div className="health-row"><span className="dot"></span><span className="health-value">Healthy</span></div>
-                  </div>
-                  <div className="health-item">
-                    <div className="health-label">Database</div>
-                    <div className="health-row"><span className="dot"></span><span className="health-value">Connected</span></div>
-                  </div>
-                  <div className="health-item">
-                    <div className="health-label">API Response</div>
-                    <div className="health-row"><span className="dot"></span><span className="health-value">120ms</span></div>
-                  </div>
-                  <div className="health-item">
-                    <div className="health-label">Uptime</div>
-                    <div className="health-row"><span className="dot"></span><span className="health-value">99.9%</span></div>
-                  </div>
-                </div>
-              </section>
-            </>
-          )}
-
-          {currentView === "events" && (
-            <section>
-              <div className="section-head">
-                <h2>Manage Events</h2>
-                <button className="btn primary" onClick={() => setShowCreateModal(true)}>
-                  <Plus /> <span>Create New Event</span>
-                </button>
-              </div>
-
-              <div className="filters">
-                <div className="search-wrap">
-                  <Search className="search-icon" />
-                  <input
-                    className="search-input"
-                    placeholder="Search events..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <select
-                    value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
-                    className="search-input"
-                    style={{
-                      width: 'auto',
-                      paddingLeft: '12px',
-                      border: '2px solid #6B7280', // Thicker border
-                      backgroundColor: darkMode ? '#1F2937' : '#FFFFFF', // White bg in light mode
-                      color: darkMode ? '#F9FAFB' : '#111827',
-                      fontWeight: '600', // Bolder text
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="all">📂 All Categories</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Sports">Sports</option>
-                    <option value="Culture">Culture</option>
-                    <option value="Academic">Academic</option>
-                    <option value="Business">Business</option>
-                    <option value="Workshop">Workshop</option>
-                  </select>
-
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="search-input"
-                    style={{
-                      width: 'auto',
-                      paddingLeft: '12px',
-                      border: '2px solid #6B7280',
-                      backgroundColor: darkMode ? '#1F2937' : '#FFFFFF',
-                      color: darkMode ? '#F9FAFB' : '#111827',
-                      fontWeight: '600',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="all">📊 All Status</option>
-                    <option value="active">Active</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="card table-card">
-                <table className="events-table">
-                  <thead>
-                    <tr>
-                      <th>Event</th>
-                      <th>Category</th>
-                      <th>Date</th>
-                      <th>Registrations</th>
-                      <th>Revenue</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {eventsList
-                      .filter(ev => {
-                        const matchesSearch = ev.title.toLowerCase().includes(searchQuery.toLowerCase());
-                        const matchesCategory = filterCategory === 'all' || ev.category === filterCategory;
-                        const matchesStatus = filterStatus === 'all' || ev.status === filterStatus;
-                        return matchesSearch && matchesCategory && matchesStatus;
-                      })
-                      .map(ev => (
-                        <tr key={ev._id}>
-                          <td className="ev-title">{ev.title}</td>
-                          <td>{ev.category}</td>
-                          <td>{ev.date}</td>
-                          <td>{ev.registeredCount || 0}/{ev.totalSeats}</td>
-                          <td className="ev-rev">{ev.revenue || "Free"}</td>
-                          <td><span className={`pill ${getStatusColor(ev.status)}`}>{ev.status}</span></td>
-                          <td>
-                            <div className="actions-cell">
-                              <button className="btn icon-btn edit" onClick={() => handleEditClick(ev)}><Edit size={16} /></button>
-                              <button className="btn icon-btn delete" onClick={() => handleDeleteEvent(ev._id)}><Trash2 size={16} /></button>
+                {/* Event Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className={`${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+                      <tr className="text-left text-xs uppercase tracking-wider font-semibold">
+                        <th className="px-6 py-4 rounded-tl-lg">Event</th>
+                        <th className="px-6 py-4">Date & Location</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4">Registrations</th>
+                        <th className="px-6 py-4 text-right rounded-tr-lg">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
+                      {eventsList.map((event) => (
+                        <tr key={event._id} className={`group transition-all ${darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-16 h-12 rounded-lg overflow-hidden relative">
+                                <img src={event.image} className="w-full h-full object-cover" />
+                              </div>
+                              <div>
+                                <p className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</p>
+                                <span className={`text-xs px-2 py-0.5 rounded-full border ${darkMode ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>{event.category}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              <p className="flex items-center gap-2"><Calendar size={14} className="text-pink-500" /> {event.date}</p>
+                              <p className="flex items-center gap-2 mt-1"><MapPin size={14} className="text-orange-500" /> {event.location}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${event.status === 'upcoming' ? 'bg-blue-500/20 text-blue-500' : 'bg-green-500/20 text-green-500'}`}>
+                              {event.status || 'Active'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="w-full max-w-[140px]">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className={darkMode ? 'text-slate-400' : 'text-slate-600'}>{event.registeredCount || 0}/{event.totalSeats}</span>
+                                <span className="text-pink-500 font-bold">{Math.round(((event.registeredCount || 0) / event.totalSeats) * 100)}%</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-slate-700/30 overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-pink-500 to-orange-500" style={{ width: `${((event.registeredCount || 0) / event.totalSeats) * 100}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
+                                <Edit size={18} />
+                              </button>
+                              <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                <Trash2 size={18} />
+                              </button>
                             </div>
                           </td>
                         </tr>
                       ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {currentView === "approvals" && (
-            <section>
-              <div className="section-head">
-                <h2>Pending Approvals</h2>
-                <div className="actions-inline">
-                  {/* Bulk actions could go here */}
+                    </tbody>
+                  </table>
+                  {eventsList.length === 0 && (
+                    <div className="p-12 text-center text-gray-500">
+                      No events found. Create one to get started.
+                    </div>
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="approvals-list">
-                <h3 className="mb-4 text-xl font-bold">Event Requests</h3>
-                {pendingApprovals.length === 0 && <div className="card" style={{ padding: 20 }}>No pending event requests</div>}
-                {pendingApprovals.map(a => (
-                  <div className="approval-row card" key={a._id}>
-                    <div className="approval-left">
-                      <div className="avatar-lg">{a.createdBy?.fullName?.charAt(0) || '?'}</div>
-                      <div>
-                        <div className="approval-name">{a.title}</div>
-                        <div className="approval-sub">{a.college}</div>
-                        <div className="approval-sub">Host: {a.createdBy?.fullName || 'Unknown'}</div>
-                      </div>
-                    </div>
-                    <div className="approval-actions">
-                      <div className="time-txt">{new Date(a.createdAt).toLocaleDateString()}</div>
-                      <button className="btn success ghost" onClick={() => handleApproveEvent(a._id, true)}><CheckCircle /> Approve</button>
-                      <button className="btn danger ghost" onClick={() => handleApproveEvent(a._id, false)}><XCircle /> Reject</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="approvals-list mt-8">
-                <h3 className="mb-4 text-xl font-bold">Registration Requests</h3>
-                {pendingRegistrations.length === 0 && <div className="card" style={{ padding: 20 }}>No pending registrations</div>}
-                {pendingRegistrations.map(a => (
-                  <div className="approval-row card" key={a._id}>
-                    <div className="approval-left">
-                      <div className="avatar-lg bg-gradient-to-r from-blue-500 to-cyan-500">{a.user?.fullName?.charAt(0) || '?'}</div>
-                      <div>
-                        <div className="approval-name">{a.user?.fullName}</div>
-                        <div className="approval-sub">Registered for: <strong>{a.event?.title}</strong></div>
-                        <div className="approval-sub">Email: {a.user?.email}</div>
-                      </div>
-                    </div>
-                    <div className="approval-actions">
-                      <div className="time-txt">{new Date(a.createdAt).toLocaleDateString()}</div>
-                      <button className="btn success ghost" onClick={() => handleApproveRegistration(a._id, true)}><CheckCircle /> Accept</button>
-                      <button className="btn danger ghost" onClick={() => handleApproveRegistration(a._id, false)}><XCircle /> Decline</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {currentView === "users" && (
-            <section>
-              <div className="section-head">
-                <h2>User Management</h2>
-                <div className="actions-inline">
-                  <button className="btn primary ghost"><Download /> Export CSV</button>
-                </div>
-              </div>
-
-              <div className="card table-card">
-                <table className="events-table">
-                  <thead>
+            {currentView === "users" && (
+              <div className={`p-1 rounded-3xl overflow-hidden border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                <table className="w-full">
+                  <thead className={`${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
                     <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>College</th>
-                      <th>Role</th>
-                      <th>Joined</th>
-                      <th>Actions</th>
+                      <th className="px-6 py-4 text-left">User</th>
+                      <th className="px-6 py-4 text-left">Email</th>
+                      <th className="px-6 py-4 text-left">College</th>
+                      <th className="px-6 py-4 text-left">Role</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
                     {usersList.map(u => (
-                      <tr key={u._id}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div className="avatar" style={{ width: 32, height: 32, fontSize: 12 }}>{u.fullName?.charAt(0)}</div>
-                            {u.fullName}
-                          </div>
+                      <tr key={u._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
+                        <td className="px-6 py-4 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">{u.fullName.charAt(0)}</div>
+                          <span className={darkMode ? "text-white" : "text-slate-900"}>{u.fullName}</span>
                         </td>
-                        <td>{u.email}</td>
-                        <td>{u.college}</td>
-                        <td><span className={`pill ${u.role === 'admin' ? 'status-active' : 'status-completed'}`}>{u.role}</span></td>
-                        <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <button className="icon-btn small danger" title="Delete" onClick={() => handleDeleteUser(u._id)}><Trash2 /></button>
+                        <td className="px-6 py-4 text-sm opacity-70">{u.email}</td>
+                        <td className="px-6 py-4 text-sm opacity-70">{u.college}</td>
+                        <td className="px-6 py-4"><span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-500 uppercase">{u.role}</span></td>
+                        <td className="px-6 py-4 text-right">
+                          <button onClick={() => handleDeleteUser(u._id)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </section>
-          )}
+            )}
 
-          {currentView === "analytics" && (
-            <section>
-              <div className="section-head"><h2>Analytics Overview</h2></div>
-
-              <div className="stats-grid" style={{ marginBottom: 20 }}>
-                <div className="card stat-card">
-                  <div className="stat-label">Total Events</div>
-                  <div className="stat-value">{eventsList.length}</div>
-                </div>
-                <div className="card stat-card">
-                  <div className="stat-label">Active Users</div>
-                  <div className="stat-value">{usersList.length}</div>
-                </div>
-                <div className="card stat-card">
-                  <div className="stat-label">Pending Approvals</div>
-                  <div className="stat-value">{pendingApprovals.length}</div>
-                </div>
-              </div>
-
-              <div className="two-col">
-                <div className="card">
-                  <h3>Events by Status</h3>
-                  <div style={{ marginTop: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {['active', 'completed', 'pending', 'cancelled'].map(status => {
-                      const count = eventsList.filter(e => e.status === status).length;
-                      const pct = eventsList.length ? Math.round((count / eventsList.length) * 100) : 0;
-                      return (
-                        <div key={status}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, textTransform: 'capitalize' }}>
-                            <span>{status}</span><span>{count} ({pct}%)</span>
-                          </div>
-                          <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4 }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: getStatusColor(status) === 'status-active' ? '#34d399' : '#fb923c', borderRadius: 4 }}></div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-                <div className="card">
-                  <h3>Events by Category</h3>
-                  <div style={{ marginTop: 15, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {Array.from(new Set(eventsList.map(e => e.category))).map(cat => {
-                      const count = eventsList.filter(e => e.category === cat).length;
-                      const pct = eventsList.length ? Math.round((count / eventsList.length) * 100) : 0;
-                      return (
-                        <div key={cat}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                            <span>{cat}</span><span>{count}</span>
-                          </div>
-                          <div style={{ height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 4 }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: '#818cf8', borderRadius: 4 }}></div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                    {eventsList.length === 0 && <div>No data available</div>}
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-          {currentView === "settings" && user && (
-            <section>
-              <div className="section-head">
-                <h2>Profile Settings</h2>
-              </div>
-              <div className="card" style={{ maxWidth: '600px' }}>
-                <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-                  <div className="form-group">
-                    <label>Full Name</label>
-                    <input name="fullName" defaultValue={user.fullName} className="search-input" style={{ width: '100%' }} />
-                  </div>
-                  <div className="form-group">
-                    <label>College</label>
-                    <input name="college" defaultValue={user.college} className="search-input" style={{ width: '100%' }} />
-                  </div>
-                  <div className="form-group">
-                    <label>New Password</label>
-                    <input name="password" type="password" placeholder="Leave blank to keep current" className="search-input" style={{ width: '100%' }} />
-                  </div>
-                  <button type="submit" className="btn primary">Update Profile</button>
-                </form>
-
-                {/* Role Switcher */}
-                <div style={{ marginTop: 30, paddingTop: 20, borderTop: '1px solid var(--glass-border)' }}>
-                  <h3 style={{ marginBottom: 15 }}>Dashboard Access</h3>
-                  <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 15 }}>Switch between Admin and Student dashboards</p>
-                  {user.availableRoles && user.availableRoles.length > 1 ? (
-                    <button
-                      className="btn primary"
-                      onClick={() => {
-                        if (user.role === 'admin') {
-                          router.push('/student-dashboard');
-                        } else {
-                          router.push('/admin-dashboard');
-                        }
-                      }}
-                    >
-                      {user.role === 'admin' ? 'Switch to Student Dashboard' : 'Switch to Admin Dashboard'}
-                    </button>
-                  ) : (
-                    <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-                      You only have access to the {user.role} dashboard. Contact an administrator to request additional access.
-                    </p>
+            {currentView === "registrations" && (
+              <div className={`rounded-3xl border backdrop-blur-xl overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className={`${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
+                      <tr className="text-left text-xs uppercase tracking-wider font-semibold">
+                        <th className="px-6 py-4">Event</th>
+                        <th className="px-6 py-4">User</th>
+                        <th className="px-6 py-4">Date</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
+                      {registrationsList.map((reg) => (
+                        <tr key={reg._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
+                          <td className="px-6 py-4 font-medium">{reg.event?.title || 'Unknown Event'}</td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.user?.fullName || 'Unknown User'}</p>
+                              <p className="text-xs opacity-70">{reg.user?.email}</p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm opacity-70">
+                            {new Date(reg.createdAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                              reg.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
+                                'bg-yellow-500/10 text-yellow-500'
+                              }`}>
+                              {reg.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {reg.status === 'pending' && (
+                              <div className="flex items-center justify-end gap-2">
+                                <button onClick={() => handleApproveRegistration(reg._id, true)} className="p-2 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20" title="Approve">
+                                  <CheckCircle size={18} />
+                                </button>
+                                <button onClick={() => handleApproveRegistration(reg._id, false)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title="Reject">
+                                  <XCircle size={18} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {registrationsList.length === 0 && (
+                    <div className="p-12 text-center opacity-50">No registrations found.</div>
                   )}
                 </div>
               </div>
-            </section>
-          )}
+            )}
+
+            {currentView === "analytics" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                    <h3 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Events by Category</h3>
+                    <div className="space-y-4">
+                      {Array.from(new Set(eventsList.map(e => e.category))).map(cat => {
+                        const count = eventsList.filter(e => e.category === cat).length;
+                        const pct = eventsList.length ? Math.round((count / eventsList.length) * 100) : 0;
+                        return (
+                          <div key={cat}>
+                            <div className="flex justify-between mb-1 text-sm">
+                              <span>{cat}</span>
+                              <span>{count}</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-slate-700/30 overflow-hidden">
+                              <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {eventsList.length === 0 && <p className="opacity-50">No data</p>}
+                    </div>
+                  </div>
+
+                  <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                    <h3 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Events by Status</h3>
+                    <div className="space-y-4">
+                      {['active', 'completed', 'pending', 'cancelled'].map(status => {
+                        const count = eventsList.filter(e => e.status === status).length;
+                        const pct = eventsList.length ? Math.round((count / eventsList.length) * 100) : 0;
+                        return (
+                          <div key={status}>
+                            <div className="flex justify-between mb-1 text-sm capitalize">
+                              <span>{status}</span>
+                              <span>{count}</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-slate-700/30 overflow-hidden">
+                              <div className={`h-full rounded-full ${status === 'active' ? 'bg-green-500' : status === 'cancelled' ? 'bg-red-500' : 'bg-orange-500'}`} style={{ width: `${pct}%` }}></div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentView === "settings" && (
+              <div className={`max-w-2xl p-8 rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                <h3 className={`text-2xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Profile Settings</h3>
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-70">Full Name</label>
+                    <input name="fullName" defaultValue={user.fullName} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-70">College</label>
+                    <input name="college" defaultValue={user.college} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2 opacity-70">New Password</label>
+                    <input name="password" type="password" placeholder="Leave blank to keep current" className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`} />
+                  </div>
+                  <button type="submit" className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold hover:shadow-lg transition-all">Update Profile</button>
+                </form>
+
+                <div className="mt-8 pt-6 border-t border-gray-500/20">
+                  <h4 className="text-lg font-bold mb-2">Role Management</h4>
+                  <p className="text-sm opacity-70 mb-4">Switch between Admin and Student views if authorized.</p>
+                  {user.availableRoles && user.availableRoles.length > 1 ? (
+                    <button onClick={() => router.push(user.role === 'admin' ? '/student-dashboard' : '/admin-dashboard')} className={`px-6 py-3 rounded-xl border font-bold ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'}`}>
+                      Switch to {user.role === 'admin' ? 'Student' : 'Admin'} Dashboard
+                    </button>
+                  ) : (
+                    <p className="text-sm opacity-50 italic">Single role account.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+          </div>
         </main>
       </div>
 
+      {/* Create Event Modal - Styled */}
       {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content card">
-            <div className="modal-head">
-              <h2>{editingEvent ? "Edit Event" : "Create New Event"}</h2>
-              <button className="close-btn" onClick={() => { setShowCreateModal(false); setEditingEvent(null); setNewEvent({ title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", createdBy: "" }); }}>&times;</button>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-8 shadow-2xl ${darkMode ? 'bg-slate-900 border border-white/10 text-white' : 'bg-white text-slate-900'}`}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className={`text-2xl font-bold bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent`}>
+                {editingEvent ? 'Edit Event' : 'Create New Event'}
+              </h2>
+              <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+                <X size={24} />
+              </button>
             </div>
-            <form onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent} className="create-form">
-              <div className="form-group">
-                <label>Title</label>
-                <input required value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })} placeholder="Event Title" />
+
+            {/* Form Content */}
+            <form onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-2 opacity-80">Event Title</label>
+                <input
+                  type="text"
+                  value={newEvent.title}
+                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} focus:ring-2 focus:ring-pink-500 outline-none`}
+                  required
+                />
               </div>
-              <div className="form-group">
-                <label>Category</label>
-                <select value={newEvent.category} onChange={e => setNewEvent({ ...newEvent, category: e.target.value })}>
-                  <option value="Technology">Technology</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Cultural">Cultural</option>
-                  <option value="Academic">Academic</option>
-                  <option value="Business">Business</option>
-                  <option value="Workshop">Workshop</option>
-                  <option value="Music">Music</option>
-                  <option value="Arts">Arts</option>
-                  <option value="Hackathon">Hackathon</option>
-                </select>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Date</label>
-                  <input type="date" min={new Date().toISOString().split('T')[0]} required value={newEvent.date} onChange={e => setNewEvent({ ...newEvent, date: e.target.value })} />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Date</label>
+                  <input type="date" min={localToday} value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} required />
                 </div>
-                <div className="form-group">
-                  <label>Time</label>
-                  <input type="time" required value={newEvent.time} onChange={e => setNewEvent({ ...newEvent, time: e.target.value })} />
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Time</label>
+                  <input type="time" value={newEvent.time} onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} required />
                 </div>
               </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Registration Start</label>
-                  <input type="date" min={new Date().toISOString().split('T')[0]} required value={newEvent.registrationStartDate} onChange={e => setNewEvent({ ...newEvent, registrationStartDate: e.target.value })} />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Organizing College</label>
+                  <input type="text" value={newEvent.college} onChange={(e) => setNewEvent({ ...newEvent, college: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} required />
                 </div>
-                <div className="form-group">
-                  <label>Registration End</label>
-                  <input
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    max={newEvent.date ? new Date(new Date(newEvent.date).getTime() - 86400000).toISOString().split('T')[0] : undefined}
-                    required
-                    value={newEvent.registrationEndDate}
-                    onChange={e => setNewEvent({ ...newEvent, registrationEndDate: e.target.value })}
-                  />
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Location (Optional)</label>
+                  <input type="text" value={newEvent.location} onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} />
                 </div>
               </div>
-              <div className="form-group">
-                <label>Location</label>
-                <input required value={newEvent.location} onChange={e => setNewEvent({ ...newEvent, location: e.target.value })} placeholder="Venue" />
-              </div>
-              <div className="form-group">
-                <label>College</label>
-                <input required value={newEvent.college} onChange={e => setNewEvent({ ...newEvent, college: e.target.value })} placeholder="Organizing College" />
-              </div>
-              <div className="form-group">
-                <label>Total Seats</label>
-                <input type="number" required value={newEvent.totalSeats} onChange={e => setNewEvent({ ...newEvent, totalSeats: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Min Team Size</label>
-                  <input type="number" min="1" required value={newEvent.teamSizeMin} onChange={e => setNewEvent({ ...newEvent, teamSizeMin: e.target.value })} />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Category</label>
+                  <select value={newEvent.category} onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    {["Technology", "Sports", "Cultural", "Academic", "Business", "Workshop", "Music", "Arts"].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
-                <div className="form-group">
-                  <label>Max Team Size</label>
-                  <input type="number" min="1" required value={newEvent.teamSizeMax} onChange={e => setNewEvent({ ...newEvent, teamSizeMax: e.target.value })} />
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Total Seats (Optional)</label>
+                  <input type="number" value={newEvent.totalSeats} onChange={(e) => setNewEvent({ ...newEvent, totalSeats: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} min="1" />
                 </div>
               </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea required value={newEvent.description} onChange={e => setNewEvent({ ...newEvent, description: e.target.value })} rows={3} />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Min Team Size (Optional)</label>
+                  <input type="number" value={newEvent.teamSizeMin} onChange={(e) => setNewEvent({ ...newEvent, teamSizeMin: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} min="1" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Max Team Size (Optional)</label>
+                  <input type="number" value={newEvent.teamSizeMax} onChange={(e) => setNewEvent({ ...newEvent, teamSizeMax: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} min="1" />
+                </div>
               </div>
-              <div className="form-group">
-                <label>Host (User)</label>
-                <select value={newEvent.createdBy} onChange={e => setNewEvent({ ...newEvent, createdBy: e.target.value })} required>
-                  <option value="">Select Host User</option>
-                  {usersList.map(u => <option key={u._id} value={u._id}>{u.fullName} ({u.email})</option>)}
-                </select>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Registration Start</label>
+                  <input type="date" min={localToday} max={newEvent.registrationEndDate || newEvent.date} value={newEvent.registrationStartDate?.split('T')[0] || ''} onChange={(e) => setNewEvent({ ...newEvent, registrationStartDate: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2 opacity-80">Registration End</label>
+                  <input type="date" min={localToday} max={newEvent.date} value={newEvent.registrationEndDate?.split('T')[0] || ''} onChange={(e) => setNewEvent({ ...newEvent, registrationEndDate: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} />
+                </div>
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn secondary" onClick={() => { setShowCreateModal(false); setEditingEvent(null); }}>Cancel</button>
-                <button type="submit" className="btn primary">{editingEvent ? "Update Event" : "Create Event"}</button>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 opacity-80">Description</label>
+                <textarea
+                  value={newEvent.description}
+                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  rows={4}
+                  className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} focus:ring-2 focus:ring-pink-500 outline-none`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 opacity-80">Event Banner</label>
+                <div className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors ${darkMode ? 'border-slate-700 hover:border-pink-500/50' : 'border-slate-300 hover:border-pink-500'}`}>
+                  {newEvent.image || imagePreview ? (
+                    <div className="relative group">
+                      <img
+                        src={newEvent.image || imagePreview}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg shadow-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setNewEvent({ ...newEvent, image: "" }); setImagePreview(""); }}
+                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className={`p-4 rounded-full ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                        <Plus size={24} className="opacity-50" />
+                      </div>
+                      <p className="text-sm font-medium">Click to upload image</p>
+                      <p className="text-xs opacity-50">PNG, JPG up to 5MB</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button type="button" onClick={() => setShowCreateModal(false)} className={`flex-1 py-3 rounded-xl font-bold ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
+                <button type="submit" className="flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg hover:shadow-pink-500/25 hover:scale-[1.02] transition-transform">
+                  {editingEvent ? 'Update Event' : 'Create Event'}
+                </button>
               </div>
             </form>
-          </div>
+
+          </motion.div>
         </div>
       )}
 
-      {/* Styles */}
-      <style>{`
-        :root{
-          --bg-dark-1: #0b1220;
-          --bg-dark-2: #062025;
-          --card-dark: rgba(255,255,255,0.06);
-          --muted: #94a3b8;
-          --accent-emerald: #10b981;
-          --accent-teal: #14b8a6;
-          --glass-border: rgba(255,255,255,0.08);
-          --glass-border-2: rgba(0,0,0,0.06);
-          --radius: 14px;
-          --trans: 200ms;
-        }
-
-        .dashboard-root {
-          min-height: 100vh;
-          font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-          background: linear-gradient(135deg, #0b1220 0%, #03323a 50%, #08202b 100%);
-          color: #e6eef6;
-        }
-        .dashboard-root.light {
-          background: linear-gradient(135deg, #f7fafc 0%, #ecfdf5 50%, #f1f5f9 100%);
-          color: #0f172a;
-          --muted: #475569;
-          --glass-border: rgba(0,0,0,0.08);
-          --card-dark: #ffffff;
-        }
-
-        .sidebar {
-          position: fixed;
-          left: 0;
-          top: 0;
-          width: 260px;
-          height: 100vh;
-          padding: 24px;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-          gap: 18px;
-          z-index: 40;
-          transition: transform var(--trans) ease, background var(--trans);
-          border-right: 1px solid var(--glass-border);
-          backdrop-filter: blur(8px);
-          background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-          border-radius: 0 18px 18px 0;
-        }
-        .dashboard-root.light .sidebar {
-          background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
-          border-right: 1px solid var(--glass-border-2);
-        }
-        .sidebar.closed { transform: translateX(-320px); }
-        .sidebar.open { transform: translateX(0); }
-
-        .sidebar-top { display:flex; justify-content:space-between; align-items:center; }
-        .brand { font-size:20px; margin:0; font-weight:700; letter-spacing:0.2px; }
-        .icon-btn { background: transparent; border: none; color: inherit; display: inline-flex; align-items:center; justify-content:center; padding:8px; border-radius:8px; cursor:pointer; }
-        .hide-desktop { display:none; }
-
-        .nav { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
-        .nav-item {
-          display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:12px; border:1px solid transparent;
-          background: transparent; color:inherit; cursor:pointer; text-align:left; font-weight:600;
-          transition: background var(--trans), transform var(--trans), border-color var(--trans);
-        }
-        .nav-item .nav-icon { width:18px; height:18px; }
-        .nav-item:hover { background: rgba(255,255,255,0.03); transform: translateY(-2px); }
-        .nav-item.active { background: linear-gradient(90deg,var(--accent-emerald), var(--accent-teal)); color: #fff; box-shadow: 0 6px 18px rgba(16,185,129,0.08); }
-        .badge { margin-left:auto; background:#ef4444; color:white; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700; }
-
-        .sidebar-bottom { margin-top:auto; }
-
-        .main-area { transition: margin-left var(--trans); margin-left: 260px; min-height: 100vh; padding-top: 80px; }
-        .main-area.full { margin-left: 0; }
-
-        .topbar {
-          position: sticky; top: 0; z-index: 30; display:flex; justify-content:space-between; align-items:center;
-          padding:18px 28px; backdrop-filter: blur(8px); border-bottom: 1px solid var(--glass-border);
-          background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-        }
-        .dashboard-root.light .topbar { background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01)); border-bottom:1px solid var(--glass-border-2); }
-
-        .topbar-left { display:flex; align-items:center; gap:16px; }
-        .topbar-right { display:flex; align-items:center; gap:12px; }
-        .page-title { margin:0; font-size:20px; font-weight:700; }
-        .page-sub { margin:0; color:var(--muted); font-size:13px; }
-
-        .profile { display:flex; align-items:center; gap:12px; }
-        .profile-info { text-align:right; }
-        .profile-name { font-weight:700; }
-        .profile-role { font-size:12px; color:var(--muted); }
-        .avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; background: linear-gradient(90deg,var(--accent-emerald), var(--accent-teal)); color:white; font-weight:700; }
-
-        .content { padding:28px; max-width:1200px; margin:0 auto; box-sizing:border-box; }
-
-        .card { background: var(--card-dark); border: 1px solid var(--glass-border); padding:18px; border-radius: var(--radius); box-shadow: 0 6px 18px rgba(2,6,23,0.3); }
-
-        .stats-grid { display:grid; grid-template-columns: repeat(1,1fr); gap:18px; margin-bottom:18px; }
-        @media(min-width:720px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
-        @media(min-width:1100px){ .stats-grid { grid-template-columns: repeat(4,1fr); } }
-
-        .stat-card { padding:18px; display:flex; flex-direction:column; gap:8px; transition: transform var(--trans); }
-        .stat-card:hover { transform: translateY(-6px); }
-        .stat-head { display:flex; justify-content:space-between; align-items:center; }
-        .stat-icon { width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
-        .stat-icon svg { width:22px; height:22px; }
-        .stat-body { margin-top:6px; }
-        .stat-value { font-size:28px; font-weight:800; }
-        .stat-label { color:var(--muted); margin-top:6px; }
-        .stat-change { font-size:13px; margin-top:6px; }
-
-        .purple { background: rgba(139,92,246,0.12); color:#c084fc; }
-        .blue { background: rgba(56,189,248,0.08); color:#7dd3fc; }
-        .green { background: rgba(16,185,129,0.08); color:#34d399; }
-        .orange { background: rgba(249,115,22,0.08); color:#fb923c; }
-
-        .positive { color: #34d399; }
-        .alert { color: #fb923c; }
-
-        .two-col { display:grid; grid-template-columns:1fr; gap:18px; margin:18px 0; }
-        @media(min-width:1000px){ .two-col { grid-template-columns: 1fr 420px; } }
-
-        .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
-        .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; border:1px solid transparent; cursor:pointer; font-weight:700; }
-        .btn.small { padding:8px 10px; }
-        .btn.primary { background: linear-gradient(90deg,var(--accent-emerald), var(--accent-teal)); color:white; box-shadow:0 8px 24px rgba(16,185,129,0.08); border: none; }
-        .btn.primary.small { padding:8px 10px; font-size:13px; }
-        .btn.ghost { background:transparent; border:1px solid rgba(255,255,255,0.04); color: inherit; padding:8px 12px; }
-        .btn.success { color:#10b981; border:1px solid rgba(16,185,129,.12); }
-        .btn.danger { color:#ef4444; border:1px solid rgba(239,68,68,.08); }
-
-        .recent-events .list-row { display:flex; justify-content:space-between; align-items:center; padding:12px; border-radius:10px; margin-bottom:8px; background:transparent; border:1px solid rgba(255,255,255,0.02); }
-        .list-title { font-weight:700; }
-        .list-sub { color:var(--muted); font-size:13px; margin-top:4px; }
-
-        .pill { padding:6px 10px; border-radius:999px; font-weight:700; font-size:12px; border:1px solid rgba(255,255,255,0.06); }
-        .status-active { background: rgba(16,185,129,0.12); color: #34d399; border-color: rgba(16,185,129,0.2); }
-        .status-completed { background: rgba(59,130,246,0.08); color: #7dd3fc; border-color: rgba(59,130,246,0.18); }
-        .status-cancelled { background: rgba(239,68,68,0.08); color: #fb7185; border-color: rgba(239,68,68,0.18); }
-        .status-pending { background: rgba(250,204,21,0.08); color: #facc15; border-color: rgba(250,204,21,0.18); }
-
-        .recent-activity .activity-row { display:flex; gap:12px; align-items:center; padding:10px 0; border-bottom:1px dashed rgba(255,255,255,0.02); }
-        .act-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
-        .act-icon.registration { background: rgba(56,189,248,0.06); color:#38bdf8; }
-        .act-icon.approval { background: rgba(16,185,129,0.06); color:#34d399; }
-        .act-icon.event { background: rgba(139,92,246,0.06); color:#c084fc; }
-        .act-icon.user { background: rgba(249,115,22,0.06); color:#fb923c; }
-        .act-body .act-message { font-weight:700; }
-        .act-body .act-time { font-size:13px; color:var(--muted); margin-top:4px; }
-
-        .system-health .health-grid { display:grid; grid-template-columns:repeat(1,1fr); gap:10px; }
-        @media(min-width:720px){ .system-health .health-grid { grid-template-columns:repeat(4,1fr); } }
-        .health-item { padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.02); background:transparent; }
-        .health-label { color:var(--muted); font-size:13px; margin-bottom:8px; }
-        .health-row { display:flex; align-items:center; gap:8px; }
-        .dot { width:10px; height:10px; background:#34d399; border-radius:50%; display:inline-block; animation: pulse 1.6s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity:1; } 50% { transform: scale(1.3); opacity:0.7; } 100% { transform: scale(1); opacity:1; } }
-        .health-value { color:#34d399; font-weight:700; }
-
-        .table-card { margin-top:16px; overflow:auto; }
-        .events-table { width:100%; border-collapse:collapse; min-width:900px; }
-        .events-table thead tr { border-bottom:1px solid rgba(255,255,255,0.04); }
-        .events-table th, .events-table td { padding:12px 14px; text-align:left; color:inherit; font-weight:600; }
-        .events-table tbody tr { border-bottom:1px solid rgba(255,255,255,0.02); transition: background var(--trans); }
-        .events-table tbody tr:hover { background: rgba(255,255,255,0.02); }
-
-        .row-actions { display:flex; gap:8px; align-items:center; }
-        .icon-btn.small { padding:6px; }
-
-        .approvals-list { display:flex; flex-direction:column; gap:12px; margin-top:14px; }
-        .approval-row { display:flex; justify-content:space-between; align-items:center; padding:14px; }
-        .approval-left { display:flex; gap:12px; align-items:center; }
-        .avatar-lg { width:56px; height:56px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:linear-gradient(90deg,#7c3aed,#ec4899); color:white; font-weight:800; font-size:20px; }
-        .approval-name { font-weight:800; }
-        .approval-sub { color:var(--muted); font-size:13px; margin-top:6px; }
-        .approval-actions { display:flex; gap:10px; align-items:center; }
-
-        .coming-soon { text-align:center; padding:48px; }
-        .big-emoji { font-size:48px; margin-bottom:10px; }
-
-        .filters { display:flex; gap:12px; align-items:center; margin:18px 0; }
-        .search-wrap { position:relative; flex:1; }
-        .search-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); opacity:0.8; }
-        .search-input { width:100%; padding:10px 12px 10px 40px; border-radius:12px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:inherit; font-weight:600; }
-
-        @media(max-width:900px){
-          .hide-desktop { display:inline-flex; }
-          .sidebar { z-index:60; }
-          .main-area { margin-left: 0; }
-        }
-
-        .dashboard-root.light .card { background: #ffffff; border-color: #e6eef6; color: #0f172a; box-shadow: 0 6px 20px rgba(2,6,23,0.04); }
-        .dashboard-root.light .nav-item:hover { background: rgba(2,6,23,0.02); }
-        .dashboard-root.light .pill { border-color: rgba(15,23,42,0.04); }
-        .dashboard-root.light .stat-card { background: #ffffff; }
-
-        .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:100; backdrop-filter:blur(5px); }
-        .modal-content { width:100%; max-width:500px; max-height:90vh; overflow-y:auto; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
-        .modal-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
-        .create-form { display:flex; flex-direction:column; gap:14px; }
-        .form-group { display:flex; flex-direction:column; gap:6px; }
-        .form-group label { font-size:13px; color:var(--muted); font-weight:600; }
-        .form-group input, .form-group textarea {
-           background: rgba(0,0,0,0.2); border:1px solid var(--glass-border); padding:10px; border-radius:8px; color:inherit; font-family:inherit;
-        }
-        .form-group select {
-           background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2); padding:10px; border-radius:8px; color:inherit; font-family:inherit; cursor:pointer;
-        }
-        .form-group select option {
-           background: #0b1220; color: #e6eef6;
-        }
-        .dashboard-root.light .form-group input, .dashboard-root.light .form-group textarea {
-           background: #f8fafc; border-color: #cbd5e1;
-        }
-        .dashboard-root.light .form-group select {
-           background: #ffffff; border-color: #94a3b8; color: #0f172a;
-        }
-        .dashboard-root.light .form-group select option {
-           background: #ffffff; color: #0f172a;
-        }
-        .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-        .modal-actions { display:flex; justify-content:flex-end; gap:12px; margin-top:20px; }
-
-        .notification-badge { position:absolute; top:-4px; right:-4px; background:#ef4444; color:white; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
-        .notifications-dropdown { position:absolute; top:calc(100% + 10px); right:0; width:350px; max-height:500px; background:var(--card-dark); border:1px solid var(--glass-border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.3); z-index:1000; overflow:hidden; }
-        .notifications-header { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--glass-border); }
-        .notifications-header h3 { margin:0; font-size:16px; font-weight:700; }
-        .notifications-list { max-height:400px; overflow-y:auto; }
-        .notification-item { padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.02); cursor:pointer; transition:background var(--trans); }
-        .notification-item:hover { background:rgba(255,255,255,0.02); }
-        .notification-item.unread { background:rgba(16,185,129,0.05); border-left:3px solid var(--accent-emerald); }
-        .notification-title { font-weight:700; margin-bottom:4px; }
-        .notification-message { font-size:13px; color:var(--muted); margin-bottom:4px; }
-        .notification-time { font-size:11px; color:var(--muted); }
-
-      `}</style>
     </div>
   );
 }

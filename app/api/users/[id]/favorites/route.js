@@ -1,31 +1,45 @@
-import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb';
-import User from '@/models/User';
+
+import connectDB from "@/lib/mongodb";
+import User from "@/models/User";
+import { NextResponse } from "next/server";
 
 export async function POST(request, { params }) {
+    const { id } = await params;
     try {
         await connectDB();
-        const { id } = await params;
         const { eventId } = await request.json();
 
         const user = await User.findById(id);
         if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        const isFavorite = user.favorites.includes(eventId);
-        if (isFavorite) {
-            user.favorites = user.favorites.filter(id => id.toString() !== eventId);
-        } else {
+        if (!user.favorites.includes(eventId)) {
             user.favorites.push(eventId);
+            await user.save();
         }
 
+        return NextResponse.json({ message: "Favorite added", favorites: user.favorites });
+    } catch (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request, { params }) {
+    const { id } = await params;
+    try {
+        await connectDB();
+        const { eventId } = await request.json();
+
+        const user = await User.findById(id);
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
+
+        user.favorites = user.favorites.filter(fav => fav.toString() !== eventId);
         await user.save();
 
-        return NextResponse.json({
-            message: isFavorite ? 'Removed from favorites' : 'Added to favorites',
-            favorites: user.favorites
-        });
+        return NextResponse.json({ message: "Favorite removed", favorites: user.favorites });
     } catch (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
