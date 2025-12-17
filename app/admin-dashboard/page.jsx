@@ -39,9 +39,9 @@ export default function AdminDashboard() {
   const [darkMode, setDarkMode] = useState(true);
   const [showSidebar, setShowSidebar] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTab, setSelectedTab] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterDate, setFilterDate] = useState("");
 
   // State for real data
   const [statsData, setStatsData] = useState({
@@ -267,6 +267,17 @@ export default function AdminDashboard() {
   ];
 
   const events = eventsList; // Use fetched events
+
+  // Filter Logic
+  const filteredEvents = eventsList.filter(event => {
+    const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.location?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = filterCategory === "all" || event.category === filterCategory;
+    const matchesStatus = filterStatus === "all" || event.status === filterStatus;
+    const matchesDate = !filterDate || event.date === filterDate;
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate;
+  });
 
 
 
@@ -693,18 +704,57 @@ export default function AdminDashboard() {
               <div className={`rounded-3xl border backdrop-blur-xl overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
                 {/* Tool bar */}
                 <div className="p-6 border-b border-gray-500/10 flex flex-col md:flex-row gap-4 justify-between items-center">
-                  <div className="relative w-full md:w-96">
+                  <div className="relative w-full md:w-64">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
                       type="text"
                       placeholder="Search events..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       className={`w-full pl-12 pr-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-900/50 border-white/10 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'} focus:ring-2 focus:ring-pink-500 outline-none`}
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <button className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
-                      <Filter size={20} />
-                    </button>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Category Filter */}
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className={`p-3 rounded-xl border appearance-none cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    >
+                      <option value="all">All Categories</option>
+                      {["Technology", "Sports", "Cultural", "Academic", "Business", "Workshop", "Music", "Arts"].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+
+                    {/* Status Filter */}
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className={`p-3 rounded-xl border appearance-none cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                      <option value="pending">Pending</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+
+                    {/* Date Filter */}
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className={`p-3 rounded-xl border cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    />
+
+                    {(filterCategory !== 'all' || filterStatus !== 'all' || filterDate) && (
+                      <button
+                        onClick={() => { setFilterCategory('all'); setFilterStatus('all'); setFilterDate(''); setSearchQuery(''); }}
+                        className={`p-3 rounded-xl border hover:bg-red-500/10 hover:text-red-500 transition-colors ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                        title="Clear Filters"
+                      >
+                        <X size={20} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -721,7 +771,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
-                      {eventsList.map((event) => (
+                      {filteredEvents.map((event) => (
                         <tr key={event._id} className={`group transition-all ${darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-4">
@@ -770,7 +820,7 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
-                  {eventsList.length === 0 && (
+                  {filteredEvents.length === 0 && (
                     <div className="p-12 text-center text-gray-500">
                       No events found. Create one to get started.
                     </div>
@@ -795,8 +845,8 @@ export default function AdminDashboard() {
                     {usersList.map(u => (
                       <tr key={u._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
                         <td className="px-6 py-4 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">{u.fullName.charAt(0)}</div>
-                          <span className={darkMode ? "text-white" : "text-slate-900"}>{u.fullName}</span>
+                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">{u.fullName?.charAt(0) || '?'}</div>
+                          <span className={darkMode ? "text-white" : "text-slate-900"}>{u.fullName || 'Unknown User'}</span>
                         </td>
                         <td className="px-6 py-4 text-sm opacity-70">{u.email}</td>
                         <td className="px-6 py-4 text-sm opacity-70">{u.college}</td>
