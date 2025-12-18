@@ -58,7 +58,7 @@ export default function EventPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-pink-950 to-slate-950">
       <nav className="bg-gradient-to-r from-pink-600/20 via-purple-600/20 to-orange-600/20 backdrop-blur-2xl border-b border-white/10 shadow-lg sticky top-0 z-50">
         <div className="w-full px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex f items-center gap-3">
             <Logo size={32} />
             <h1 className="text-white font-bold text-xl">CampusEventHub</h1>
           </div>
