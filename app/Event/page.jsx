@@ -194,7 +194,7 @@ export default function EventPage() {
             <div className="text-center py-20">
               <div className="text-6xl mb-4">🔍</div>
               <h3 className="text-2xl font-bold text-white mb-2">No events found</h3>
-              <p className="text-gray-400">Try adjusting your search or filters</p>
+              <p className="text-gray-400 pikachu">Try adjusting your search or filters</p>
             </div>
           )}
         </div>
