@@ -69,8 +69,8 @@ export default function Home() {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <button className="text-white font-medium hover:text-pink-400 transition-colors">Home</button>
-            <Link href="/event" className="text-gray-300 hover:text-white transition-colors">Events</Link>
+            <button className="text-white text-lg font-medium hover:text-pink-400 transition-colors">Home</button>
+            <Link href="/event" className="text-gray-300 text-lg hover:text-white transition-colors">Events</Link>
           </div>
 
           <div className="flex items-center gap-4">
