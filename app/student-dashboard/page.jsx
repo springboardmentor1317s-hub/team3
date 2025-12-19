@@ -20,6 +20,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterDate, setFilterDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [currentView, setCurrentView] = useState("feed");
@@ -91,7 +92,7 @@ export default function StudentDashboard() {
     fetchData();
   }, [router]);
 
-  // Handle mobile sidebar on resize
+  // Handle mobile sidebar on resize.
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
@@ -272,9 +273,10 @@ export default function StudentDashboard() {
   const filteredEvents = events.filter(event => {
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
+    const matchesDate = !filterDate || event.date === filterDate;
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.college.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesStatus && matchesSearch;
+    return matchesCategory && matchesStatus && matchesSearch && matchesDate;
   });
 
   const getRegistrationStatus = (eventId) => {
@@ -386,7 +388,7 @@ export default function StudentDashboard() {
             <button
               key={item.id}
               onClick={() => setCurrentView(item.id)}
-              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 font-medium group ${currentView === item.id
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 text-lg font-medium group ${currentView === item.id
                 ? "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/30 scale-[1.02]"
                 : darkMode
                   ? "text-slate-400 hover:bg-white/10 hover:text-white"
@@ -445,6 +447,64 @@ export default function StudentDashboard() {
                     </div>
                   </motion.div>
                 ))}
+              </div>
+
+              {/* Filter Section */}
+              <div className={`p-6 rounded-3xl border backdrop-blur-xl mb-8 ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                  <div className="relative w-full md:w-64">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                      type="text"
+                      placeholder="Search events..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className={`w-full pl-12 pr-4 py-3 rounded-xl border ${darkMode ? 'bg-slate-900/50 border-white/10 text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'} focus:ring-2 focus:ring-pink-500 outline-none`}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {/* Category Filter */}
+                    <select
+                      value={selectedCategory}
+                      onChange={(e) => setSelectedCategory(e.target.value)}
+                      className={`p-3 rounded-xl border appearance-none cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    >
+                      <option value="all">All Categories</option>
+                      {["Technology", "Sports", "Cultural", "Academic", "Business", "Workshop", "Music", "Arts"].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+
+                    {/* Status Filter */}
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className={`p-3 rounded-xl border appearance-none cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                      <option value="pending">Pending</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+
+                    {/* Date Filter */}
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className={`p-3 rounded-xl border cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    />
+
+                    {(selectedCategory !== 'all' || filterStatus !== 'all' || filterDate || searchQuery) && (
+                      <button
+                        onClick={() => { setSelectedCategory('all'); setFilterStatus('all'); setFilterDate(''); setSearchQuery(''); }}
+                        className={`p-3 rounded-xl border hover:bg-red-500/10 hover:text-red-500 transition-colors ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                        title="Clear Filters"
+                      >
+                        <X size={20} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Event Grid */}
@@ -948,20 +1008,28 @@ export default function StudentDashboard() {
                 <X size={20} className="text-black" />
               </button>
               <div className="h-40 bg-gradient-to-br from-pink-600 to-orange-600 relative p-6 flex flex-col justify-end">
-                <h3 className="text-white font-bold text-2xl leading-none">{selectedTicket.event.title}</h3>
-                <p className="text-white/80 text-sm mt-1">{selectedTicket.event.date} • {selectedTicket.event.time}</p>
+                <h3 className="text-white font-bold text-2xl leading-none">{selectedTicket.event?.title || "Event Details Unavailable"}</h3>
+                <p className="text-white/80 text-sm mt-1">
+                  {selectedTicket.event?.date ? new Date(selectedTicket.event.date).toLocaleDateString() : "Date N/A"} • {selectedTicket.event?.time || "Time N/A"}
+                </p>
                 <div className="absolute -bottom-6 right-6 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
                   <Logo size={24} />
                 </div>
               </div>
               <div className="p-8 flex flex-col items-center text-center">
                 <div className="mb-6 p-4 bg-white border-2 border-dashed border-gray-300 rounded-xl">
-                  <QRCodeSVG value={JSON.stringify({
-                    id: selectedTicket._id,
-                    event: selectedTicket.event.title,
-                    user: user.fullName,
-                    date: selectedTicket.event.date
-                  })} size={160} />
+                  {selectedTicket.event ? (
+                    <QRCodeSVG value={JSON.stringify({
+                      id: selectedTicket._id,
+                      event: selectedTicket.event.title,
+                      user: user.fullName,
+                      date: selectedTicket.event.date
+                    })} size={160} />
+                  ) : (
+                    <div className="w-40 h-40 flex items-center justify-center text-slate-400">
+                      QR Unavailable
+                    </div>
+                  )}
                 </div>
                 <h4 className="font-bold text-slate-900 text-lg mb-1">{user.fullName}</h4>
                 <p className="text-slate-500 text-sm mb-4">{user.college}</p>
