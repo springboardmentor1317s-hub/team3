@@ -8,42 +8,59 @@ import { motion } from "framer-motion";
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const events = [
-    {
-      title: "Tech Hackathon 2025",
-      description: "Join the ultimate coding challenge and innovate solutions for tomorrow.",
-      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&h=600&fit=crop",
-      date: "Jan 15-16, 2025",
-      category: "Technology"
-    },
-    {
-      title: "Sports Championship",
-      description: "Compete in various sports and showcase your athletic prowess.",
-      image: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=1200&h=600&fit=crop",
-      date: "Feb 20-22, 2025",
-      category: "Sports"
-    },
-    {
-      title: "Cultural Festival",
-      description: "Celebrate diversity through music, dance, and art performances.",
-      image: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=1200&h=600&fit=crop",
-      date: "Mar 10-12, 2025",
-      category: "Culture"
-    }
-  ];
+  interface Event {
+    _id: string;
+    title: string;
+    description: string;
+    image: string;
+    date: string;
+    category: string;
+    status: string;
+  }
+
+  const [events, setEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const res = await fetch("/api/admin/events");
+        if (res.ok) {
+          const data = await res.json();
+          const allEvents: Event[] = data.events || [];
+
+          // Filter for upcoming/active events and sort by date closest to today
+          const upcomingEvents = allEvents
+            .filter((e: Event) => new Date(e.date) >= new Date() && e.status !== 'cancelled')
+            .sort((a: Event, b: Event) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(0, 5); // Take top 5 closest events
+
+          // If no upcoming events, fallback to showing most recent created ones
+          setEvents(upcomingEvents.length > 0 ? upcomingEvents : allEvents.slice(0, 5));
+        }
+      } catch (error) {
+        console.error("Failed to fetch featured events:", error);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % events.length);
+    if (events.length > 0) {
+      setCurrentSlide((prev) => (prev + 1) % events.length);
+    }
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + events.length) % events.length);
+    if (events.length > 0) {
+      setCurrentSlide((prev) => (prev - 1 + events.length) % events.length);
+    }
   };
 
   useEffect(() => {
+    if (events.length === 0) return;
     const timer = setInterval(nextSlide, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [events.length]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-pink-950 to-slate-950">

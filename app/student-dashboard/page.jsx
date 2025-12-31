@@ -36,6 +36,7 @@ export default function StudentDashboard() {
   // Team Registration State
   const [teamName, setTeamName] = useState("");
   const [teamMembers, setTeamMembers] = useState([]);
+  const [memberInput, setMemberInput] = useState("");
   const [selectedTicket, setSelectedTicket] = useState(null); // For QR modal
   const [favorites, setFavorites] = useState([]); // Local state for favorites
 
