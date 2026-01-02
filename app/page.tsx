@@ -66,11 +66,15 @@ export default function Home() {
   };
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % events.length);
+    if (events.length > 0) {
+      setCurrentSlide((prev) => (prev + 1) % events.length);
+    }
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + events.length) % events.length);
+    if (events.length > 0) {
+      setCurrentSlide((prev) => (prev - 1 + events.length) % events.length);
+    }
   };
 
   useEffect(() => {

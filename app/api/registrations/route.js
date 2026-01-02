@@ -20,11 +20,32 @@ export async function POST(request) {
         if (teamMembers && teamMembers.length > 0) {
             const event = await Event.findById(eventId);
             if (event) {
+                // Check if registration deadline passed
+                if (event.registrationEndDate && new Date() > new Date(event.registrationEndDate)) {
+                    return NextResponse.json({ error: 'Registration deadline has passed' }, { status: 400 });
+                }
+
+                // Check event capacity
+                if (event.totalSeats && event.registeredCount >= event.totalSeats) {
+                    return NextResponse.json({ error: 'Event is fully booked' }, { status: 400 });
+                }
+
                 const totalMembers = teamMembers.length + 1; // +1 for the registrar
                 if (totalMembers < (event.teamSizeMin || 1) || totalMembers > (event.teamSizeMax || 1)) {
                     return NextResponse.json({
                         error: `Team size must be between ${event.teamSizeMin || 1} and ${event.teamSizeMax || 1} members (including you)`
                     }, { status: 400 });
+                }
+            }
+        } else {
+            // Single user registration checks
+            const event = await Event.findById(eventId);
+            if (event) {
+                if (event.registrationEndDate && new Date() > new Date(event.registrationEndDate)) {
+                    return NextResponse.json({ error: 'Registration deadline has passed' }, { status: 400 });
+                }
+                if (event.totalSeats && event.registeredCount >= event.totalSeats) {
+                    return NextResponse.json({ error: 'Event is fully booked' }, { status: 400 });
                 }
             }
         }

@@ -36,6 +36,7 @@ export default function StudentDashboard() {
   // Team Registration State
   const [teamName, setTeamName] = useState("");
   const [teamMembers, setTeamMembers] = useState([]);
+  const [memberInput, setMemberInput] = useState("");
   const [selectedTicket, setSelectedTicket] = useState(null); // For QR modal
   const [favorites, setFavorites] = useState([]); // Local state for favorites
 
@@ -92,7 +93,7 @@ export default function StudentDashboard() {
     fetchData();
   }, [router]);
 
-  // Handle mobile sidebar on resize
+  // Handle mobile sidebar on resize.
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
@@ -645,7 +646,7 @@ export default function StudentDashboard() {
                 {Array.from({ length: new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
                   const day = i + 1;
                   const dateStr = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day).toISOString().split('T')[0];
-                  const dayEvents = myRegistrations.filter(r => r.event.date && r.event.date.startsWith(dateStr));
+                  const dayEvents = myRegistrations.filter(r => r.event && r.event.date && r.event.date.startsWith(dateStr));
                   const hasEvent = dayEvents.length > 0;
                   const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
