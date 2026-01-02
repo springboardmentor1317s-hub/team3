@@ -1,22 +1,25 @@
 import connectDB from '@/lib/mongodb';
 import Event from '@/models/Event';
+import User from '@/models/User'; // Ensure User model is registered for populate
 import { NextResponse } from 'next/server';
 
 export async function GET(request) {
   try {
     await connectDB();
 
-    // Auto-complete past events
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const currentDate = `${year}-${month}-${day}`;
+    // Auto-completion logic removed to prevent premature event closing due to timezone differences.
+    // Events should be marked completed manually or via a scheduled job.
 
-    await Event.updateMany(
-      { status: 'active', date: { $lt: currentDate } },
-      { $set: { status: 'completed' } }
-    );
+    // const today = new Date();
+    // const year = today.getFullYear();
+    // const month = String(today.getMonth() + 1).padStart(2, '0');
+    // const day = String(today.getDate()).padStart(2, '0');
+    // const currentDate = `${year}-${month}-${day}`;
+
+    // await Event.updateMany(
+    //   { status: 'active', date: { $lt: currentDate } },
+    //   { $set: { status: 'completed' } }
+    // );
 
     const events = await Event.find()
       .populate('createdBy', 'fullName email')
