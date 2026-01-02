@@ -21,10 +21,17 @@ export default function EventPage() {
 
   const fetchEvents = async () => {
     try {
+      console.log("Fetching events...");
       const res = await fetch("/api/admin/events");
+      console.log("Fetch response status:", res.status);
+
       if (res.ok) {
         const data = await res.json();
+        console.log("Fetched events data:", data);
         setEvents(data.events || []);
+      } else {
+        const text = await res.text();
+        console.error("Fetch failed:", text);
       }
     } catch (error) {
       console.error("Failed to fetch events:", error);

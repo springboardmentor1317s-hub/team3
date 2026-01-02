@@ -22,41 +22,52 @@ export default function Login() {
     setMsg({ type: "", text: "" });
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setMsg({ type: "", text: "" });
     setIsLoading(true);
 
-    fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, role }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setMsg({ type: "error", text: data.error });
-        } else {
-          setMsg({ type: "success", text: "Login successful! Redirecting..." });
-          localStorage.setItem('user', JSON.stringify(data.user));
-          if (data.token) {
-            localStorage.setItem('token', data.token);
-          }
-          setTimeout(() => {
-            if (role === "admin") {
-              router.replace("/admin-dashboard");
-            } else {
-              router.replace("/student-dashboard");
-            }
-          }, 1500);
-
-        }
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setMsg({ type: "error", text: "Connection error" });
-        setIsLoading(false);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role }),
       });
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text);
+        // Extract a meaningful message from the HTML if possible, or show the first 100 chars
+        const errorMessage = text.length > 200 ? text.substring(0, 200) + "..." : text;
+        throw new Error(`Server returned 500. Details: ${errorMessage}`);
+      }
+
+      const data = await res.json();
+
+      if (data.error) {
+        setMsg({ type: "error", text: data.error });
+      } else {
+        setMsg({ type: "success", text: "Login successful! Redirecting..." });
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+        }
+        setTimeout(() => {
+          if (role === "admin") {
+            router.replace("/admin-dashboard");
+          } else {
+            router.replace("/student-dashboard");
+          }
+        }, 1500);
+
+      }
+    } catch (err) {
+      console.error("Login Error:", err);
+      setMsg({ type: "error", text: err.message || "Connection error" });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (

@@ -42,6 +42,7 @@ export default function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterDate, setFilterDate] = useState("");
+  const [filterRegistrationEvent, setFilterRegistrationEvent] = useState("all");
 
   // State for real data
   const [statsData, setStatsData] = useState({
@@ -829,6 +830,8 @@ export default function AdminDashboard() {
               </div>
             )}
 
+
+
             {currentView === "users" && (
               <div className={`p-1 rounded-3xl overflow-hidden border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
                 <table className="w-full">
@@ -842,7 +845,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
-                    {usersList.map(u => (
+                    {usersList.filter(u => u.role === 'student').map(u => (
                       <tr key={u._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
                         <td className="px-6 py-4 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">{u.fullName?.charAt(0) || '?'}</div>
@@ -863,6 +866,30 @@ export default function AdminDashboard() {
 
             {currentView === "registrations" && (
               <div className={`rounded-3xl border backdrop-blur-xl overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
+
+                {/* Filter Bar */}
+                <div className="p-6 border-b border-gray-500/10 flex gap-4 items-center">
+                  <Filter size={20} className="text-gray-400" />
+                  <select
+                    value={filterRegistrationEvent}
+                    onChange={(e) => setFilterRegistrationEvent(e.target.value)}
+                    className={`p-3 rounded-xl border appearance-none cursor-pointer flex-1 md:max-w-xs ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                  >
+                    <option value="all">All Events</option>
+                    {eventsList.map(event => (
+                      <option key={event._id} value={event._id}>{event.title}</option>
+                    ))}
+                  </select>
+                  {filterRegistrationEvent !== 'all' && (
+                    <button
+                      onClick={() => setFilterRegistrationEvent('all')}
+                      className={`p-3 rounded-xl border hover:bg-red-500/10 hover:text-red-500 transition-colors ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className={`${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
@@ -875,40 +902,42 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
-                      {registrationsList.map((reg) => (
-                        <tr key={reg._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                          <td className="px-6 py-4 font-medium">{reg.event?.title || 'Unknown Event'}</td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.user?.fullName || 'Unknown User'}</p>
-                              <p className="text-xs opacity-70">{reg.user?.email}</p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm opacity-70">
-                            {new Date(reg.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'approved' ? 'bg-green-500/10 text-green-500' :
-                              reg.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
-                                'bg-yellow-500/10 text-yellow-500'
-                              }`}>
-                              {reg.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            {reg.status === 'pending' && (
-                              <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => handleApproveRegistration(reg._id, true)} className="p-2 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20" title="Approve">
-                                  <CheckCircle size={18} />
-                                </button>
-                                <button onClick={() => handleApproveRegistration(reg._id, false)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title="Reject">
-                                  <XCircle size={18} />
-                                </button>
+                      {registrationsList
+                        .filter(reg => filterRegistrationEvent === 'all' || (reg.event && reg.event._id === filterRegistrationEvent))
+                        .map((reg) => (
+                          <tr key={reg._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
+                            <td className="px-6 py-4 font-medium">{reg.event?.title || 'Unknown Event'}</td>
+                            <td className="px-6 py-4">
+                              <div>
+                                <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.user?.fullName || 'Unknown User'}</p>
+                                <p className="text-xs opacity-70">{reg.user?.email}</p>
                               </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-6 py-4 text-sm opacity-70">
+                              {new Date(reg.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                                reg.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
+                                  'bg-yellow-500/10 text-yellow-500'
+                                }`}>
+                                {reg.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              {reg.status === 'pending' && (
+                                <div className="flex items-center justify-end gap-2">
+                                  <button onClick={() => handleApproveRegistration(reg._id, true)} className="p-2 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20" title="Approve">
+                                    <CheckCircle size={18} />
+                                  </button>
+                                  <button onClick={() => handleApproveRegistration(reg._id, false)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title="Reject">
+                                    <XCircle size={18} />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                   {registrationsList.length === 0 && (
