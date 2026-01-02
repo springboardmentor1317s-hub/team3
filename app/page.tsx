@@ -8,29 +8,62 @@ import { motion } from "framer-motion";
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const events = [
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Hardcoded placeholders to show if no events are found
+  const placeholderEvents = [
     {
       title: "Tech Hackathon 2025",
       description: "Join the ultimate coding challenge and innovate solutions for tomorrow.",
       image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&h=600&fit=crop",
       date: "Jan 15-16, 2025",
-      category: "Technology"
+      category: "Technology",
+      _id: "p1"
     },
     {
       title: "Sports Championship",
       description: "Compete in various sports and showcase your athletic prowess.",
       image: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=1200&h=600&fit=crop",
       date: "Feb 20-22, 2025",
-      category: "Sports"
+      category: "Sports",
+      _id: "p2"
     },
     {
       title: "Cultural Festival",
       description: "Celebrate diversity through music, dance, and art performances.",
       image: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=1200&h=600&fit=crop",
       date: "Mar 10-12, 2025",
-      category: "Culture"
+      category: "Culture",
+      _id: "p3"
     }
   ];
+
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch('/api/admin/events');
+      if (res.ok) {
+        const data = await res.json();
+        // Filter for active events and take only top 5 recent ones
+        const activeEvents = data.events
+          .filter(e => e.status === 'active')
+          .slice(0, 5);
+
+        if (activeEvents.length > 0) {
+          setEvents(activeEvents);
+        } else {
+          setEvents(placeholderEvents); // Fallback if no active events
+        }
+      } else {
+        setEvents(placeholderEvents);
+      }
+    } catch (error) {
+      console.error("Failed to fetch events", error);
+      setEvents(placeholderEvents);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % events.length);
@@ -41,9 +74,15 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const timer = setInterval(nextSlide, 5000);
-    return () => clearInterval(timer);
+    fetchEvents();
   }, []);
+
+  useEffect(() => {
+    if (events.length > 0) {
+      const timer = setInterval(nextSlide, 5000);
+      return () => clearInterval(timer);
+    }
+  }, [events]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-pink-950 to-slate-950">
