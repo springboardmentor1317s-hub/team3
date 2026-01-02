@@ -551,8 +551,11 @@ export default function StudentDashboard() {
                         </div>
                       </div>
 
-                      <button className="w-full py-3.5 rounded-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02] transition-all">
-                        View Details
+                      <button className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg ${getRegistrationStatus(event._id)
+                          ? "bg-green-500/20 text-green-500 shadow-green-500/10 cursor-default"
+                          : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"
+                        }`}>
+                        {getRegistrationStatus(event._id) ? "Registered" : "View Details"}
                       </button>
                     </div>
                   </motion.div>
@@ -582,12 +585,14 @@ export default function StudentDashboard() {
                           </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => setSelectedTicket(reg)}
-                        className={`w-full md:w-auto md:ml-auto px-4 py-2 rounded-xl font-bold text-sm ${darkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
-                      >
-                        View Ticket
-                      </button>
+                      {reg.status === 'approved' && (
+                        <button
+                          onClick={() => setSelectedTicket(reg)}
+                          className={`w-full md:w-auto md:ml-auto px-4 py-2 rounded-xl font-bold text-sm ${darkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
+                        >
+                          View Ticket
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
