@@ -8,41 +8,62 @@ import { motion } from "framer-motion";
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  interface Event {
-    _id: string;
-    title: string;
-    description: string;
-    image: string;
-    date: string;
-    category: string;
-    status: string;
-  }
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [events, setEvents] = useState<Event[]>([]);
+  // Hardcoded placeholders to show if no events are found
+  const placeholderEvents = [
+    {
+      title: "Tech Hackathon 2025",
+      description: "Join the ultimate coding challenge and innovate solutions for tomorrow.",
+      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&h=600&fit=crop",
+      date: "Jan 15-16, 2025",
+      category: "Technology",
+      _id: "p1"
+    },
+    {
+      title: "Sports Championship",
+      description: "Compete in various sports and showcase your athletic prowess.",
+      image: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=1200&h=600&fit=crop",
+      date: "Feb 20-22, 2025",
+      category: "Sports",
+      _id: "p2"
+    },
+    {
+      title: "Cultural Festival",
+      description: "Celebrate diversity through music, dance, and art performances.",
+      image: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=1200&h=600&fit=crop",
+      date: "Mar 10-12, 2025",
+      category: "Culture",
+      _id: "p3"
+    }
+  ];
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("/api/admin/events");
-        if (res.ok) {
-          const data = await res.json();
-          const allEvents: Event[] = data.events || [];
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch('/api/admin/events');
+      if (res.ok) {
+        const data = await res.json();
+        // Filter for active events and take only top 5 recent ones
+        const activeEvents = data.events
+          .filter(e => e.status === 'active')
+          .slice(0, 5);
 
-          // Filter for upcoming/active events and sort by date closest to today
-          const upcomingEvents = allEvents
-            .filter((e: Event) => new Date(e.date) >= new Date() && e.status !== 'cancelled')
-            .sort((a: Event, b: Event) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .slice(0, 5); // Take top 5 closest events
-
-          // If no upcoming events, fallback to showing most recent created ones
-          setEvents(upcomingEvents.length > 0 ? upcomingEvents : allEvents.slice(0, 5));
+        if (activeEvents.length > 0) {
+          setEvents(activeEvents);
+        } else {
+          setEvents(placeholderEvents); // Fallback if no active events
         }
-      } catch (error) {
-        console.error("Failed to fetch featured events:", error);
+      } else {
+        setEvents(placeholderEvents);
       }
-    };
-    fetchEvents();
-  }, []);
+    } catch (error) {
+      console.error("Failed to fetch events", error);
+      setEvents(placeholderEvents);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const nextSlide = () => {
     if (events.length > 0) {
@@ -57,10 +78,15 @@ export default function Home() {
   };
 
   useEffect(() => {
-    if (events.length === 0) return;
-    const timer = setInterval(nextSlide, 5000);
-    return () => clearInterval(timer);
-  }, [events.length]);
+    fetchEvents();
+  }, []);
+
+  useEffect(() => {
+    if (events.length > 0) {
+      const timer = setInterval(nextSlide, 5000);
+      return () => clearInterval(timer);
+    }
+  }, [events]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-pink-950 to-slate-950">
@@ -86,8 +112,8 @@ export default function Home() {
           </div>
 
           <div className="hidden md:flex items-center gap-8">
-            <button className="text-white font-medium hover:text-pink-400 transition-colors">Home</button>
-            <Link href="/event" className="text-gray-300 hover:text-white transition-colors">Events</Link>
+            <button className="text-white text-lg font-medium hover:text-pink-400 transition-colors">Home</button>
+            <Link href="/event" className="text-gray-300 text-lg hover:text-white transition-colors">Events</Link>
           </div>
 
           <div className="flex items-center gap-4">
