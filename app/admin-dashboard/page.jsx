@@ -43,6 +43,7 @@ export default function AdminDashboard() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterDate, setFilterDate] = useState("");
   const [filterRegistrationEvent, setFilterRegistrationEvent] = useState("all");
+  const [filterMyEvents, setFilterMyEvents] = useState(false);
 
   // State for real data
   const [statsData, setStatsData] = useState({
@@ -94,10 +95,10 @@ export default function AdminDashboard() {
 
       const [meRes, statsRes, eventsRes, usersRes, regsRes] = await Promise.all([
         fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/events'),
+        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/events', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/admin/users'),
-        fetch('/api/admin/registrations')
+        fetch('/api/admin/registrations', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       if (meRes.ok) {
@@ -276,8 +277,9 @@ export default function AdminDashboard() {
     const matchesCategory = filterCategory === "all" || event.category === filterCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
     const matchesDate = !filterDate || event.date === filterDate;
+    const matchesMyEvents = !filterMyEvents || (user && event.createdBy?._id === user._id);
 
-    return matchesSearch && matchesCategory && matchesStatus && matchesDate;
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
 
 
@@ -316,10 +318,14 @@ export default function AdminDashboard() {
 
   const handleApproveRegistration = async (id, approve = true) => {
     try {
+      const token = localStorage.getItem("token");
       const status = approve ? 'approved' : 'rejected';
       const res = await fetch(`/api/admin/registrations/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status })
       });
 
@@ -747,6 +753,19 @@ export default function AdminDashboard() {
                       className={`p-3 rounded-xl border cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
                     />
 
+                    {/* My Events Filter */}
+                    <button
+                      onClick={() => setFilterMyEvents(!filterMyEvents)}
+                      className={`p-3 rounded-xl border transition-all duration-300 cursor-pointer ${filterMyEvents
+                          ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white border-pink-500/30 shadow-lg shadow-pink-500/30'
+                          : darkMode
+                            ? 'bg-slate-900/50 border-white/10 text-white hover:bg-white/10'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      title={filterMyEvents ? "Show All Events" : "Show Only My Events"}
+                    >
+                      {filterMyEvents ? "My Events" : "All Events"}
+                    </button>
                     {(filterCategory !== 'all' || filterStatus !== 'all' || filterDate) && (
                       <button
                         onClick={() => { setFilterCategory('all'); setFilterStatus('all'); setFilterDate(''); setSearchQuery(''); }}
@@ -809,12 +828,16 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
-                                <Edit size={18} />
-                              </button>
-                              <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                                <Trash2 size={18} />
-                              </button>
+                              {event.createdBy?._id === user._id && (
+                                <>
+                                  <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
+                                    <Edit size={18} />
+                                  </button>
+                                  <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                    <Trash2 size={18} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
