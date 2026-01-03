@@ -322,7 +322,7 @@ export default function AdminDashboard() {
       const status = approve ? 'approved' : 'rejected';
       const res = await fetch(`/api/admin/registrations/${id}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -756,17 +756,25 @@ export default function AdminDashboard() {
                     {/* My Events Filter */}
                     <button
                       onClick={() => setFilterMyEvents(!filterMyEvents)}
-                      className={`p-3 rounded-xl border transition-all duration-300 cursor-pointer ${
-                        filterMyEvents
+                      className={`p-3 rounded-xl border transition-all duration-300 cursor-pointer ${filterMyEvents
                           ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white border-pink-500/30 shadow-lg shadow-pink-500/30'
                           : darkMode
                             ? 'bg-slate-900/50 border-white/10 text-white hover:bg-white/10'
                             : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                      }`}
+                        }`}
                       title={filterMyEvents ? "Show All Events" : "Show Only My Events"}
                     >
                       {filterMyEvents ? "My Events" : "All Events"}
                     </button>
+                    {(filterCategory !== 'all' || filterStatus !== 'all' || filterDate) && (
+                      <button
+                        onClick={() => { setFilterCategory('all'); setFilterStatus('all'); setFilterDate(''); setSearchQuery(''); }}
+                        className={`p-3 rounded-xl border hover:bg-red-500/10 hover:text-red-500 transition-colors ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                        title="Clear Filters"
+                      >
+                        <X size={20} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
