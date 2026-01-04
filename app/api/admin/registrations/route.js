@@ -4,10 +4,35 @@ import Registration from '@/models/Registration';
 import Event from '@/models/Event'; // Ensure models are registered
 import User from '@/models/User';
 
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
 export async function GET(request) {
     try {
         await connectDB();
-        const registrations = await Registration.find()
+
+        // Get token from header
+        const authHeader = request.headers.get('authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
+        }
+
+        const token = authHeader.split(' ')[1];
+        let userId;
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            userId = decoded.id;
+        } catch (err) {
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+        }
+
+        // Find events created by this admin
+        const myEvents = await Event.find({ createdBy: userId }).select('_id');
+        const myEventIds = myEvents.map(e => e._id);
+
+        // Fetch registrations only for these events
+        const registrations = await Registration.find({ event: { $in: myEventIds } })
             .populate('event', 'title date')
             .populate('user', 'fullName email')
             .sort({ createdAt: -1 });
