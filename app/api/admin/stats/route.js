@@ -36,18 +36,25 @@ export async function GET(request) {
     const userId = decoded.id;
 
     const totalEvents = await Event.countDocuments();
-    const pendingEvents = await Event.countDocuments({ status: 'pending' });
     const totalUsers = await User.countDocuments();
-    const pendingRegistrations = await Registration.countDocuments({ status: 'pending' });
-    const totalRegistrations = await Event.aggregate([
-      { $group: { _id: null, total: { $sum: '$registeredCount' } } }
-    ]);
+
+    // User-scoped stats
+    const myEvents = await Event.find({ createdBy: userId }).select('_id registeredCount status');
+    const myEventIds = myEvents.map(e => e._id);
+
+    const pendingMyEvents = myEvents.filter(e => e.status === 'pending').length;
+    const pendingMyRegistrations = await Registration.countDocuments({
+      status: 'pending',
+      event: { $in: myEventIds }
+    });
+
+    const totalMyRegistrations = myEvents.reduce((acc, curr) => acc + (curr.registeredCount || 0), 0);
 
     const stats = {
-      totalEvents: totalEvents,
-      activeUsers: totalUsers,
-      totalRegistrations: totalRegistrations[0]?.total || 0,
-      pendingApprovals: pendingEvents + pendingRegistrations,
+      totalEvents: totalEvents, // Global
+      activeUsers: totalUsers, // Global
+      totalRegistrations: totalMyRegistrations, // Scoped to admin
+      pendingApprovals: pendingMyEvents + pendingMyRegistrations, // Scoped to admin
     };
 
     return NextResponse.json(stats);
