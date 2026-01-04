@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Registration from '@/models/Registration';
 import Event from '@/models/Event'; // Ensure models are registered
 import User from '@/models/User';
+
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -14,32 +15,24 @@ export async function GET(request) {
         // Get token from header
         const authHeader = request.headers.get('authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json(
-                { error: 'Not authorized, no token' },
-                { status: 401 }
-            );
+            return NextResponse.json({ error: 'Not authorized' }, { status: 401 });
         }
 
         const token = authHeader.split(' ')[1];
-
-        // Verify token
-        let decoded;
+        let userId;
         try {
-            decoded = jwt.verify(token, JWT_SECRET);
+            const decoded = jwt.verify(token, JWT_SECRET);
+            userId = decoded.id;
         } catch (err) {
-            return NextResponse.json(
-                { error: 'Not authorized, token failed' },
-                { status: 401 }
-            );
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        const userId = decoded.id;
+        // Find events created by this admin
+        const myEvents = await Event.find({ createdBy: userId }).select('_id');
+        const myEventIds = myEvents.map(e => e._id);
 
-        // Get events created by this admin
-        const adminEvents = await Event.find({ createdBy: userId }).select('_id');
-
-        // Get registrations for those events
-        const registrations = await Registration.find({ event: { $in: adminEvents.map(e => e._id) } })
+        // Fetch registrations only for these events
+        const registrations = await Registration.find({ event: { $in: myEventIds } })
             .populate('event', 'title date')
             .populate('user', 'fullName email')
             .sort({ createdAt: -1 });

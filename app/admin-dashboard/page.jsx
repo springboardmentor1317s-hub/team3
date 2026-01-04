@@ -13,19 +13,16 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
-  Download,
   Filter,
   Search,
   BarChart3,
-  Activity,
-  AlertCircle,
   Moon,
   Sun,
   Menu,
   X,
   Bell,
-  MapPin
+  MapPin,
+  Star
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -73,8 +70,6 @@ export default function AdminDashboard() {
     totalSeats: 100,
     teamSizeMin: 1,
     teamSizeMax: 1,
-    registrationStartDate: "",
-    registrationEndDate: "",
     registrationStartDate: "",
     registrationEndDate: "",
     image: "", // Event banner image
@@ -203,7 +198,13 @@ export default function AdminDashboard() {
   const handleDeleteEvent = async (id) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
     try {
-      const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/events/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         setEventsList(eventsList.filter(ev => ev._id !== id));
         // Refresh stats potentially
@@ -237,7 +238,7 @@ export default function AdminDashboard() {
       change: "Updated now",
       color: "purple",
       trend: "up",
-      onClick: () => setCurrentView("events")
+      onClick: () => { setCurrentView("events"); setFilterMyEvents(false); }
     },
     {
       icon: Users,
@@ -264,7 +265,16 @@ export default function AdminDashboard() {
       change: "Action needed",
       color: "orange",
       trend: "alert",
-      onClick: () => setCurrentView("registrations")
+      onClick: () => { setCurrentView("events"); setFilterStatus("pending"); setFilterMyEvents(true); }
+    },
+    {
+      icon: Star,
+      label: "My Events",
+      value: eventsList.filter(e => e.createdBy?._id === user?._id).length.toString(),
+      change: "Created by you",
+      color: "pink",
+      trend: "neutral",
+      onClick: () => { setCurrentView("events"); setFilterMyEvents(true); }
     }
   ];
 
@@ -297,10 +307,14 @@ export default function AdminDashboard() {
 
   const handleApproveEvent = async (id, approve = true) => {
     try {
+      const token = localStorage.getItem("token");
       const status = approve ? 'active' : 'cancelled';
       const res = await fetch(`/api/admin/events/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status })
       });
 
@@ -427,9 +441,13 @@ export default function AdminDashboard() {
     }
 
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`/api/admin/events/${editingEvent._id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(newEvent),
       });
       if (res.ok) {
@@ -811,7 +829,11 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${event.status === 'upcoming' ? 'bg-blue-500/20 text-blue-500' : 'bg-green-500/20 text-green-500'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase
+                              ${event.status === 'pending' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                                event.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                  event.status === 'completed' ? 'bg-slate-500/10 text-slate-500 border border-slate-500/20' :
+                                    'bg-green-500/10 text-green-500 border border-green-500/20'}`}>
                               {event.status || 'Active'}
                             </span>
                           </td>
@@ -899,7 +921,7 @@ export default function AdminDashboard() {
                     className={`p-3 rounded-xl border appearance-none cursor-pointer flex-1 md:max-w-xs ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
                   >
                     <option value="all">All Events</option>
-                    {eventsList.map(event => (
+                    {eventsList.filter(event => event.createdBy?._id === user?._id).map(event => (
                       <option key={event._id} value={event._id}>{event.title}</option>
                     ))}
                   </select>
