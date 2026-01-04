@@ -49,7 +49,7 @@ export async function POST(request) {
       teamSizeMin: teamSizeMin || 1,
       teamSizeMax: teamSizeMax || 1,
       createdBy,
-      status: 'active',
+      status: 'pending',
       registrationStartDate: registrationStartDate || undefined,
       registrationEndDate: registrationEndDate || undefined,
       image: image || undefined, // Use provided image or let schema default handle it

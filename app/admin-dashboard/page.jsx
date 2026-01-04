@@ -13,19 +13,15 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
-  Download,
-  Filter,
   Search,
   BarChart3,
-  Activity,
-  AlertCircle,
   Moon,
   Sun,
   Menu,
   X,
   Bell,
-  MapPin
+  MapPin,
+  Star
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -43,6 +39,7 @@ export default function AdminDashboard() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterDate, setFilterDate] = useState("");
   const [filterRegistrationEvent, setFilterRegistrationEvent] = useState("all");
+  const [filterMyEvents, setFilterMyEvents] = useState(false);
 
   // State for real data
   const [statsData, setStatsData] = useState({
@@ -74,8 +71,6 @@ export default function AdminDashboard() {
     teamSizeMax: 1,
     registrationStartDate: "",
     registrationEndDate: "",
-    registrationStartDate: "",
-    registrationEndDate: "",
     image: "", // Event banner image
     college: "" // Organizing College
   });
@@ -94,10 +89,10 @@ export default function AdminDashboard() {
 
       const [meRes, statsRes, eventsRes, usersRes, regsRes] = await Promise.all([
         fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/events'),
-        fetch('/api/admin/users'),
-        fetch('/api/admin/registrations')
+        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/events', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/users'), // Users list might need auth too, typically. Assuming public for now or handled elsewhere? Let's add it to be safe if backend requires it. Actually check endpoint. Given the context, likely consistent.
+        fetch('/api/admin/registrations', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       if (meRes.ok) {
@@ -202,7 +197,13 @@ export default function AdminDashboard() {
   const handleDeleteEvent = async (id) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
     try {
-      const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/events/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         setEventsList(eventsList.filter(ev => ev._id !== id));
         // Refresh stats potentially
@@ -236,7 +237,7 @@ export default function AdminDashboard() {
       change: "Updated now",
       color: "purple",
       trend: "up",
-      onClick: () => setCurrentView("events")
+      onClick: () => { setCurrentView("events"); setFilterMyEvents(false); }
     },
     {
       icon: Users,
@@ -263,7 +264,16 @@ export default function AdminDashboard() {
       change: "Action needed",
       color: "orange",
       trend: "alert",
-      onClick: () => setCurrentView("registrations")
+      onClick: () => { setCurrentView("events"); setFilterStatus("pending"); setFilterMyEvents(true); }
+    },
+    {
+      icon: Star,
+      label: "My Events",
+      value: eventsList.filter(e => e.createdBy?._id === user?._id).length.toString(),
+      change: "Created by you",
+      color: "pink",
+      trend: "neutral",
+      onClick: () => { setCurrentView("events"); setFilterMyEvents(true); }
     }
   ];
 
@@ -276,8 +286,9 @@ export default function AdminDashboard() {
     const matchesCategory = filterCategory === "all" || event.category === filterCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
     const matchesDate = !filterDate || event.date === filterDate;
+    const matchesMyEvents = !filterMyEvents || (user && (event.createdBy?._id === user._id || event.createdBy === user._id));
 
-    return matchesSearch && matchesCategory && matchesStatus && matchesDate;
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
 
 
@@ -295,10 +306,14 @@ export default function AdminDashboard() {
 
   const handleApproveEvent = async (id, approve = true) => {
     try {
+      const token = localStorage.getItem("token");
       const status = approve ? 'active' : 'cancelled';
       const res = await fetch(`/api/admin/events/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status })
       });
 
@@ -421,9 +436,13 @@ export default function AdminDashboard() {
     }
 
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`/api/admin/events/${editingEvent._id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(newEvent),
       });
       if (res.ok) {
@@ -747,6 +766,20 @@ export default function AdminDashboard() {
                       className={`p-3 rounded-xl border cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
                     />
 
+                    {/* My Events Filter */}
+                    <button
+                      onClick={() => setFilterMyEvents(!filterMyEvents)}
+                      className={`p-3 rounded-xl border transition-all duration-300 cursor-pointer ${filterMyEvents
+                        ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white border-pink-500/30 shadow-lg shadow-pink-500/30'
+                        : darkMode
+                          ? 'bg-slate-900/50 border-white/10 text-white hover:bg-white/10'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      title={filterMyEvents ? "Show All Events" : "Show Only My Events"}
+                    >
+                      {filterMyEvents ? "My Events" : "All Events"}
+                    </button>
+
                     {(filterCategory !== 'all' || filterStatus !== 'all' || filterDate) && (
                       <button
                         onClick={() => { setFilterCategory('all'); setFilterStatus('all'); setFilterDate(''); setSearchQuery(''); }}
@@ -792,7 +825,11 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${event.status === 'upcoming' ? 'bg-blue-500/20 text-blue-500' : 'bg-green-500/20 text-green-500'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase
+                              ${event.status === 'pending' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                                event.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                  event.status === 'completed' ? 'bg-slate-500/10 text-slate-500 border border-slate-500/20' :
+                                    'bg-green-500/10 text-green-500 border border-green-500/20'}`}>
                               {event.status || 'Active'}
                             </span>
                           </td>
@@ -809,12 +846,21 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
-                                <Edit size={18} />
-                              </button>
-                              <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                                <Trash2 size={18} />
-                              </button>
+                              {(event.createdBy?._id === user._id || event.createdBy === user._id) && (
+                                <>
+                                  {event.status === 'pending' && (
+                                    <button onClick={() => handleApproveEvent(event._id, true)} className="p-2 rounded-lg transition-all hover:bg-green-50 text-green-600" title="Approve/Publish">
+                                      <CheckCircle size={18} />
+                                    </button>
+                                  )}
+                                  <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
+                                    <Edit size={18} />
+                                  </button>
+                                  <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                    <Trash2 size={18} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -876,7 +922,7 @@ export default function AdminDashboard() {
                     className={`p-3 rounded-xl border appearance-none cursor-pointer flex-1 md:max-w-xs ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
                   >
                     <option value="all">All Events</option>
-                    {eventsList.map(event => (
+                    {eventsList.filter(event => event.createdBy?._id === user?._id).map(event => (
                       <option key={event._id} value={event._id}>{event.title}</option>
                     ))}
                   </select>

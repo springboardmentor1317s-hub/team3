@@ -22,7 +22,7 @@ export default function EventPage() {
   const fetchEvents = async () => {
     try {
       console.log("Fetching events...");
-      const res = await fetch("/api/admin/events");
+      const res = await fetch("/api/events");
       console.log("Fetch response status:", res.status);
 
       if (res.ok) {
@@ -40,14 +40,14 @@ export default function EventPage() {
     }
   };
 
-  const categories = ["all", "Technology", "Sports", "Culture", "Academic", "Business"];
+  const categories = ["all", "Technology", "Sports", "Cultural", "Academic", "Business", "Music", "Workshop", "Arts"];
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
-    const isActive = event.status === 'active';
-    return matchesSearch && matchesCategory && isActive;
+    console.log("Filtering event:", event.title, "Matches:", { matchesSearch, matchesCategory });
+    return matchesSearch && matchesCategory;
   });
 
   const getColorClasses = (color) => {

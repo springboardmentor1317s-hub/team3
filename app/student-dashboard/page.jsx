@@ -71,7 +71,7 @@ export default function StudentDashboard() {
         setUser(userData.user);
         setFavorites(userData.user.favorites || []);
 
-        const eventsRes = await fetch("/api/admin/events");
+        const eventsRes = await fetch("/api/events");
         if (eventsRes.ok) {
           const data = await eventsRes.json();
           setEvents(data.events || []);
