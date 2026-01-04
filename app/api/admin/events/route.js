@@ -3,10 +3,6 @@ import Event from '@/models/Event';
 import User from '@/models/User'; // Ensure User model is registered for populate
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-import jwt from 'jsonwebtoken';
-
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export async function GET(request) {
