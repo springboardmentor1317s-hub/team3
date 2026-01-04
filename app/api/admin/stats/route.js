@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+
 export async function GET(request) {
   try {
     await connectDB();
@@ -33,7 +34,7 @@ export async function GET(request) {
       );
     }
 
-    const userId = decoded.id;
+    const userId = decoded.id; // Correctly defined now
 
     const totalEvents = await Event.countDocuments();
     const totalUsers = await User.countDocuments();

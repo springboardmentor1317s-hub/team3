@@ -13,6 +13,7 @@ import {
   Plus,
   Edit,
   Trash2,
+  Filter,
   Search,
   BarChart3,
   Moon,
