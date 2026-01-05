@@ -21,10 +21,17 @@ export default function EventPage() {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch("/api/admin/events");
+      console.log("Fetching events...");
+      const res = await fetch("/api/events");
+      console.log("Fetch response status:", res.status);
+
       if (res.ok) {
         const data = await res.json();
+        console.log("Fetched events data:", data);
         setEvents(data.events || []);
+      } else {
+        const text = await res.text();
+        console.error("Fetch failed:", text);
       }
     } catch (error) {
       console.error("Failed to fetch events:", error);
@@ -33,14 +40,14 @@ export default function EventPage() {
     }
   };
 
-  const categories = ["all", "Technology", "Sports", "Culture", "Academic", "Business"];
+  const categories = ["all", "Technology", "Sports", "Cultural", "Academic", "Business", "Music", "Workshop", "Arts"];
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       event.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || event.category === selectedCategory;
-    const isActive = event.status === 'active';
-    return matchesSearch && matchesCategory && isActive;
+    console.log("Filtering event:", event.title, "Matches:", { matchesSearch, matchesCategory });
+    return matchesSearch && matchesCategory;
   });
 
   const getColorClasses = (color) => {

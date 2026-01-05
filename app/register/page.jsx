@@ -22,7 +22,7 @@ export default function Register() {
     setMsg({ type: "", text: "" });
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setMsg({ type: "", text: "" });
 
@@ -41,27 +41,36 @@ export default function Register() {
 
     setIsLoading(true);
 
-    fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, email, password, college, role }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setMsg({ type: "error", text: data.error });
-        } else {
-          setMsg({ type: "success", text: "Registration successful! Redirecting to login..." });
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 1500);
-        }
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setMsg({ type: "error", text: "Connection error" });
-        setIsLoading(false);
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, email, password, college, role }),
       });
+
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        console.error("Non-JSON response:", text);
+        throw new Error(`Server error: ${res.status} ${res.statusText}`);
+      }
+
+      const data = await res.json();
+
+      if (data.error) {
+        setMsg({ type: "error", text: data.error });
+      } else {
+        setMsg({ type: "success", text: "Registration successful! Redirecting to login..." });
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1500);
+      }
+    } catch (err) {
+      console.error("Registration Error:", err);
+      setMsg({ type: "error", text: err.message || "Connection error" });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (

@@ -13,19 +13,16 @@ import {
   Plus,
   Edit,
   Trash2,
-  Eye,
-  Download,
   Filter,
   Search,
   BarChart3,
-  Activity,
-  AlertCircle,
   Moon,
   Sun,
   Menu,
   X,
   Bell,
-  MapPin
+  MapPin,
+  Star
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
@@ -42,6 +39,8 @@ export default function AdminDashboard() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterDate, setFilterDate] = useState("");
+  const [filterRegistrationEvent, setFilterRegistrationEvent] = useState("all");
+  const [filterMyEvents, setFilterMyEvents] = useState(false);
 
   // State for real data
   const [statsData, setStatsData] = useState({
@@ -73,8 +72,6 @@ export default function AdminDashboard() {
     teamSizeMax: 1,
     registrationStartDate: "",
     registrationEndDate: "",
-    registrationStartDate: "",
-    registrationEndDate: "",
     image: "", // Event banner image
     college: "" // Organizing College
   });
@@ -93,10 +90,10 @@ export default function AdminDashboard() {
 
       const [meRes, statsRes, eventsRes, usersRes, regsRes] = await Promise.all([
         fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/events'),
+        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/events', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/admin/users'),
-        fetch('/api/admin/registrations')
+        fetch('/api/admin/registrations', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       if (meRes.ok) {
@@ -201,7 +198,13 @@ export default function AdminDashboard() {
   const handleDeleteEvent = async (id) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
     try {
-      const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' });
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/admin/events/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (res.ok) {
         setEventsList(eventsList.filter(ev => ev._id !== id));
         // Refresh stats potentially
@@ -235,7 +238,7 @@ export default function AdminDashboard() {
       change: "Updated now",
       color: "purple",
       trend: "up",
-      onClick: () => setCurrentView("events")
+      onClick: () => { setCurrentView("events"); setFilterMyEvents(false); }
     },
     {
       icon: Users,
@@ -262,7 +265,16 @@ export default function AdminDashboard() {
       change: "Action needed",
       color: "orange",
       trend: "alert",
-      onClick: () => setCurrentView("registrations")
+      onClick: () => { setCurrentView("events"); setFilterStatus("pending"); setFilterMyEvents(true); }
+    },
+    {
+      icon: Star,
+      label: "My Events",
+      value: eventsList.filter(e => e.createdBy?._id === user?._id).length.toString(),
+      change: "Created by you",
+      color: "pink",
+      trend: "neutral",
+      onClick: () => { setCurrentView("events"); setFilterMyEvents(true); }
     }
   ];
 
@@ -275,8 +287,13 @@ export default function AdminDashboard() {
     const matchesCategory = filterCategory === "all" || event.category === filterCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
     const matchesDate = !filterDate || event.date === filterDate;
+    const isOwner = user && event.createdBy && (
+      (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
+      (String(event.createdBy) === String(user._id))
+    );
+    const matchesMyEvents = !filterMyEvents || isOwner;
 
-    return matchesSearch && matchesCategory && matchesStatus && matchesDate;
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
 
 
@@ -294,10 +311,14 @@ export default function AdminDashboard() {
 
   const handleApproveEvent = async (id, approve = true) => {
     try {
+      const token = localStorage.getItem("token");
       const status = approve ? 'active' : 'cancelled';
       const res = await fetch(`/api/admin/events/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status })
       });
 
@@ -315,10 +336,14 @@ export default function AdminDashboard() {
 
   const handleApproveRegistration = async (id, approve = true) => {
     try {
+      const token = localStorage.getItem("token");
       const status = approve ? 'approved' : 'rejected';
       const res = await fetch(`/api/admin/registrations/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status })
       });
 
@@ -374,9 +399,13 @@ export default function AdminDashboard() {
         createdBy: user?._id || (usersList.length > 0 ? usersList[0]._id : null)
       };
 
+      const token = localStorage.getItem("token");
       const res = await fetch('/api/admin/events', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
 
@@ -420,9 +449,13 @@ export default function AdminDashboard() {
     }
 
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch(`/api/admin/events/${editingEvent._id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(newEvent),
       });
       if (res.ok) {
@@ -657,7 +690,14 @@ export default function AdminDashboard() {
                 </p>
               </div>
               {currentView === 'events' && (
-                <button onClick={() => setShowCreateModal(true)} className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-105 transition-all flex items-center gap-2">
+                <button onClick={() => {
+                  setNewEvent({
+                    title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: ""
+                  });
+                  setEditingEvent(null);
+                  setImagePreview("");
+                  setShowCreateModal(true);
+                }} className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-105 transition-all flex items-center gap-2">
                   <Plus size={20} /> Create New Event
                 </button>
               )}
@@ -746,6 +786,20 @@ export default function AdminDashboard() {
                       className={`p-3 rounded-xl border cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
                     />
 
+                    {/* My Events Filter */}
+                    <button
+                      onClick={() => setFilterMyEvents(!filterMyEvents)}
+                      className={`p-3 rounded-xl border transition-all duration-300 cursor-pointer ${filterMyEvents
+                        ? 'bg-gradient-to-r from-pink-500 to-orange-500 text-white border-pink-500/30 shadow-lg shadow-pink-500/30'
+                        : darkMode
+                          ? 'bg-slate-900/50 border-white/10 text-white hover:bg-white/10'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}
+                      title={filterMyEvents ? "Show All Events" : "Show Only My Events"}
+                    >
+                      {filterMyEvents ? "My Events" : "All Events"}
+                    </button>
+
                     {(filterCategory !== 'all' || filterStatus !== 'all' || filterDate) && (
                       <button
                         onClick={() => { setFilterCategory('all'); setFilterStatus('all'); setFilterDate(''); setSearchQuery(''); }}
@@ -791,7 +845,11 @@ export default function AdminDashboard() {
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${event.status === 'upcoming' ? 'bg-blue-500/20 text-blue-500' : 'bg-green-500/20 text-green-500'}`}>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase
+                              ${event.status === 'pending' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' :
+                                event.status === 'cancelled' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                  event.status === 'completed' ? 'bg-slate-500/10 text-slate-500 border border-slate-500/20' :
+                                    'bg-green-500/10 text-green-500 border border-green-500/20'}`}>
                               {event.status || 'Active'}
                             </span>
                           </td>
@@ -808,12 +866,28 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
-                                <Edit size={18} />
-                              </button>
-                              <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                                <Trash2 size={18} />
-                              </button>
+                              {(() => {
+                                const isOwner = user && event.createdBy && (
+                                  (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
+                                  (String(event.createdBy) === String(user._id))
+                                );
+
+                                return isOwner && (
+                                  <>
+                                    {event.status === 'pending' && (
+                                      <button onClick={() => handleApproveEvent(event._id, true)} className="p-2 rounded-lg transition-all hover:bg-green-50 text-green-600" title="Approve/Publish">
+                                        <CheckCircle size={18} />
+                                      </button>
+                                    )}
+                                    <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
+                                      <Edit size={18} />
+                                    </button>
+                                    <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
@@ -829,6 +903,8 @@ export default function AdminDashboard() {
               </div>
             )}
 
+
+
             {currentView === "users" && (
               <div className={`p-1 rounded-3xl overflow-hidden border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
                 <table className="w-full">
@@ -842,7 +918,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
-                    {usersList.map(u => (
+                    {usersList.filter(u => u.role === 'student').map(u => (
                       <tr key={u._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
                         <td className="px-6 py-4 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">{u.fullName?.charAt(0) || '?'}</div>
@@ -863,6 +939,30 @@ export default function AdminDashboard() {
 
             {currentView === "registrations" && (
               <div className={`rounded-3xl border backdrop-blur-xl overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
+
+                {/* Filter Bar */}
+                <div className="p-6 border-b border-gray-500/10 flex gap-4 items-center">
+                  <Filter size={20} className="text-gray-400" />
+                  <select
+                    value={filterRegistrationEvent}
+                    onChange={(e) => setFilterRegistrationEvent(e.target.value)}
+                    className={`p-3 rounded-xl border appearance-none cursor-pointer flex-1 md:max-w-xs ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                  >
+                    <option value="all">All Events</option>
+                    {eventsList.filter(event => event.createdBy?._id === user?._id).map(event => (
+                      <option key={event._id} value={event._id}>{event.title}</option>
+                    ))}
+                  </select>
+                  {filterRegistrationEvent !== 'all' && (
+                    <button
+                      onClick={() => setFilterRegistrationEvent('all')}
+                      className={`p-3 rounded-xl border hover:bg-red-500/10 hover:text-red-500 transition-colors ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className={`${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
@@ -875,40 +975,42 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
-                      {registrationsList.map((reg) => (
-                        <tr key={reg._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                          <td className="px-6 py-4 font-medium">{reg.event?.title || 'Unknown Event'}</td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.user?.fullName || 'Unknown User'}</p>
-                              <p className="text-xs opacity-70">{reg.user?.email}</p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm opacity-70">
-                            {new Date(reg.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'approved' ? 'bg-green-500/10 text-green-500' :
-                              reg.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
-                                'bg-yellow-500/10 text-yellow-500'
-                              }`}>
-                              {reg.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-right">
-                            {reg.status === 'pending' && (
-                              <div className="flex items-center justify-end gap-2">
-                                <button onClick={() => handleApproveRegistration(reg._id, true)} className="p-2 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20" title="Approve">
-                                  <CheckCircle size={18} />
-                                </button>
-                                <button onClick={() => handleApproveRegistration(reg._id, false)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title="Reject">
-                                  <XCircle size={18} />
-                                </button>
+                      {registrationsList
+                        .filter(reg => filterRegistrationEvent === 'all' || (reg.event && reg.event._id === filterRegistrationEvent))
+                        .map((reg) => (
+                          <tr key={reg._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
+                            <td className="px-6 py-4 font-medium">{reg.event?.title || 'Unknown Event'}</td>
+                            <td className="px-6 py-4">
+                              <div>
+                                <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.user?.fullName || 'Unknown User'}</p>
+                                <p className="text-xs opacity-70">{reg.user?.email}</p>
                               </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-6 py-4 text-sm opacity-70">
+                              {new Date(reg.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                                reg.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
+                                  'bg-yellow-500/10 text-yellow-500'
+                                }`}>
+                                {reg.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              {reg.status === 'pending' && (
+                                <div className="flex items-center justify-end gap-2">
+                                  <button onClick={() => handleApproveRegistration(reg._id, true)} className="p-2 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20" title="Approve">
+                                    <CheckCircle size={18} />
+                                  </button>
+                                  <button onClick={() => handleApproveRegistration(reg._id, false)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title="Reject">
+                                    <XCircle size={18} />
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                   {registrationsList.length === 0 && (
@@ -1016,7 +1118,7 @@ export default function AdminDashboard() {
               <h2 className={`text-2xl font-bold bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent`}>
                 {editingEvent ? 'Edit Event' : 'Create New Event'}
               </h2>
-              <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+              <button onClick={() => { setShowCreateModal(false); setEditingEvent(null); }} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
                 <X size={24} />
               </button>
             </div>
@@ -1139,7 +1241,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className={`flex-1 py-3 rounded-xl font-bold ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
+                <button type="button" onClick={() => { setShowCreateModal(false); setEditingEvent(null); }} className={`flex-1 py-3 rounded-xl font-bold ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
                 <button type="submit" className="flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg hover:shadow-pink-500/25 hover:scale-[1.02] transition-transform">
                   {editingEvent ? 'Update Event' : 'Create Event'}
                 </button>
