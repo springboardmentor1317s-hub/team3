@@ -690,7 +690,14 @@ export default function AdminDashboard() {
                 </p>
               </div>
               {currentView === 'events' && (
-                <button onClick={() => setShowCreateModal(true)} className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-105 transition-all flex items-center gap-2">
+                <button onClick={() => {
+                  setNewEvent({
+                    title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: ""
+                  });
+                  setEditingEvent(null);
+                  setImagePreview("");
+                  setShowCreateModal(true);
+                }} className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-105 transition-all flex items-center gap-2">
                   <Plus size={20} /> Create New Event
                 </button>
               )}
@@ -1111,7 +1118,7 @@ export default function AdminDashboard() {
               <h2 className={`text-2xl font-bold bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent`}>
                 {editingEvent ? 'Edit Event' : 'Create New Event'}
               </h2>
-              <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+              <button onClick={() => { setShowCreateModal(false); setEditingEvent(null); }} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
                 <X size={24} />
               </button>
             </div>
@@ -1234,7 +1241,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className={`flex-1 py-3 rounded-xl font-bold ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
+                <button type="button" onClick={() => { setShowCreateModal(false); setEditingEvent(null); }} className={`flex-1 py-3 rounded-xl font-bold ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
                 <button type="submit" className="flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg hover:shadow-pink-500/25 hover:scale-[1.02] transition-transform">
                   {editingEvent ? 'Update Event' : 'Create Event'}
                 </button>
