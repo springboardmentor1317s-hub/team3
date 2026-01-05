@@ -181,7 +181,16 @@ export default function StudentDashboard() {
           setSelectedEvent(prev => ({ ...prev, registeredUsers: [...(prev.registeredUsers || []), user._id] }));
         }
 
-        alert("Registered successfully!");
+        // Add to myRegistrations
+        setMyRegistrations(prev => [{
+          _id: Date.now(), // Temp ID until refresh
+          event: registrationEvent,
+          user: user._id,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        }, ...prev]);
+
+        alert("Registration submitted! Waiting for admin approval.");
         setShowRegisterModal(false);
         setRegistrationEvent(null);
       } else {
@@ -240,20 +249,23 @@ export default function StudentDashboard() {
   ];
 
   // Derived stats
-  const registeredEvents = events.filter(ev => ev.registeredUsers?.includes(user?._id)).map(ev => ({
-    ...ev,
-    registeredDate: "Recently",
-    status: 'approved'
-  }));
+  // Derived stats
+  const registeredEvents = myRegistrations.filter(reg => reg.status === 'approved').map(reg => ({
+    ...reg.event,
+    registeredDate: new Date(reg.createdAt).toLocaleDateString(),
+    status: reg.status
+  })).filter(ev => ev && ev._id);
 
   const upcomingEventsCount = registeredEvents.filter(ev => new Date(ev.date) > new Date()).length;
   const pastEventsCount = registeredEvents.filter(ev => new Date(ev.date) < new Date()).length;
 
-  const notifications = registeredEvents.slice(0, 5).map((ev, i) => ({
+  const notifications = myRegistrations.slice(0, 5).map((reg, i) => ({
     id: i,
-    type: 'success',
-    message: `Successfully registered for ${ev.title}`,
-    time: 'Recently'
+    type: reg.status === 'approved' ? 'success' : reg.status === 'rejected' ? 'error' : 'warning',
+    message: reg.status === 'approved' ? `Registration approved for ${reg.event?.title}` :
+      reg.status === 'rejected' ? `Registration rejected for ${reg.event?.title}` :
+        `Registration pending for ${reg.event?.title}`,
+    time: new Date(reg.createdAt).toLocaleDateString()
   }));
 
   const getCategoryColor = (category) => {
@@ -551,11 +563,18 @@ export default function StudentDashboard() {
                         </div>
                       </div>
 
-                      <button className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg ${getRegistrationStatus(event._id)
-                          ? "bg-green-500/20 text-green-500 shadow-green-500/10 cursor-default"
-                          : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"
+                      <button className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg ${getRegistrationStatus(event._id) === 'approved'
+                        ? "bg-green-500/20 text-green-500 shadow-green-500/10 cursor-default"
+                        : getRegistrationStatus(event._id) === 'pending'
+                          ? "bg-orange-500/20 text-orange-500 shadow-orange-500/10 cursor-default"
+                          : getRegistrationStatus(event._id) === 'rejected'
+                            ? "bg-red-500/20 text-red-500 shadow-red-500/10 cursor-default"
+                            : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"
                         }`}>
-                        {getRegistrationStatus(event._id) ? "Registered" : "View Details"}
+                        {getRegistrationStatus(event._id) === 'approved' ? "Registered" :
+                          getRegistrationStatus(event._id) === 'pending' ? "Pending Approval" :
+                            getRegistrationStatus(event._id) === 'rejected' ? "Registration Rejected" :
+                              "View Details"}
                       </button>
                     </div>
                   </motion.div>
@@ -645,10 +664,17 @@ export default function StudentDashboard() {
 
                 {Array.from({ length: new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
                   const day = i + 1;
-                  const dateStr = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day).toISOString().split('T')[0];
-                  const dayEvents = myRegistrations.filter(r => r.event && r.event.date && r.event.date.startsWith(dateStr));
+                  const year = calendarDate.getFullYear();
+                  const month = calendarDate.getMonth(); // 0-indexed
+                  // Construct fixed YYYY-MM-DD string using local time values
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+                  const dayEvents = myRegistrations.filter(r => r.event && r.event.date && r.event.date.startsWith(dateStr) && r.status === 'approved');
                   const hasEvent = dayEvents.length > 0;
-                  const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
+                  // Check isToday using local time
+                  const now = new Date();
+                  const isToday = now.getDate() === day && now.getMonth() === month && now.getFullYear() === year;
 
                   return (
                     <motion.div
