@@ -90,10 +90,10 @@ export default function AdminDashboard() {
 
       const [meRes, statsRes, eventsRes, usersRes, regsRes] = await Promise.all([
         fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/events', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/users'), // Users list might need auth too, typically. Assuming public for now or handled elsewhere? Let's add it to be safe if backend requires it. Actually check endpoint. Given the context, likely consistent.
-        fetch('/api/admin/registrations', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/admin/stats'),
+        fetch('/api/admin/events'),
+        fetch('/api/admin/users'),
+        fetch('/api/admin/registrations')
       ]);
 
       if (meRes.ok) {
@@ -287,7 +287,6 @@ export default function AdminDashboard() {
     const matchesCategory = filterCategory === "all" || event.category === filterCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
     const matchesDate = !filterDate || event.date === filterDate;
-    const matchesMyEvents = !filterMyEvents || (user && (event.createdBy?._id === user._id || event.createdBy === user._id));
 
     return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
@@ -332,10 +331,14 @@ export default function AdminDashboard() {
 
   const handleApproveRegistration = async (id, approve = true) => {
     try {
+      const token = localStorage.getItem("token");
       const status = approve ? 'approved' : 'rejected';
       const res = await fetch(`/api/admin/registrations/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status })
       });
 
@@ -847,21 +850,12 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {(event.createdBy?._id === user._id || event.createdBy === user._id) && (
-                                <>
-                                  {event.status === 'pending' && (
-                                    <button onClick={() => handleApproveEvent(event._id, true)} className="p-2 rounded-lg transition-all hover:bg-green-50 text-green-600" title="Approve/Publish">
-                                      <CheckCircle size={18} />
-                                    </button>
-                                  )}
-                                  <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
-                                    <Edit size={18} />
-                                  </button>
-                                  <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                                    <Trash2 size={18} />
-                                  </button>
-                                </>
-                              )}
+                              <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
+                                <Edit size={18} />
+                              </button>
+                              <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                <Trash2 size={18} />
+                              </button>
                             </div>
                           </td>
                         </tr>
