@@ -90,10 +90,10 @@ export default function AdminDashboard() {
 
       const [meRes, statsRes, eventsRes, usersRes, regsRes] = await Promise.all([
         fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/events'),
+        fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/admin/events', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/admin/users'),
-        fetch('/api/admin/registrations')
+        fetch('/api/admin/registrations', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       if (meRes.ok) {
@@ -287,6 +287,11 @@ export default function AdminDashboard() {
     const matchesCategory = filterCategory === "all" || event.category === filterCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
     const matchesDate = !filterDate || event.date === filterDate;
+    const isOwner = user && event.createdBy && (
+      (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
+      (String(event.createdBy) === String(user._id))
+    );
+    const matchesMyEvents = !filterMyEvents || isOwner;
 
     return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
@@ -394,9 +399,13 @@ export default function AdminDashboard() {
         createdBy: user?._id || (usersList.length > 0 ? usersList[0]._id : null)
       };
 
+      const token = localStorage.getItem("token");
       const res = await fetch('/api/admin/events', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
 
@@ -850,12 +859,28 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
-                                <Edit size={18} />
-                              </button>
-                              <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                                <Trash2 size={18} />
-                              </button>
+                              {(() => {
+                                const isOwner = user && event.createdBy && (
+                                  (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
+                                  (String(event.createdBy) === String(user._id))
+                                );
+
+                                return isOwner && (
+                                  <>
+                                    {event.status === 'pending' && (
+                                      <button onClick={() => handleApproveEvent(event._id, true)} className="p-2 rounded-lg transition-all hover:bg-green-50 text-green-600" title="Approve/Publish">
+                                        <CheckCircle size={18} />
+                                      </button>
+                                    )}
+                                    <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
+                                      <Edit size={18} />
+                                    </button>
+                                    <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
