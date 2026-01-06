@@ -302,7 +302,11 @@ export default function AdminDashboard() {
     const matchesCategory = filterCategory === "all" || event.category === filterCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
     const matchesDate = !filterDate || event.date === filterDate;
-    const matchesMyEvents = !filterMyEvents || (user && event.createdBy?._id === user._id);
+    const isOwner = user && event.createdBy && (
+      (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
+      (String(event.createdBy) === String(user._id))
+    );
+    const matchesMyEvents = !filterMyEvents || isOwner;
 
     return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
@@ -410,9 +414,13 @@ export default function AdminDashboard() {
         createdBy: user?._id || (usersList.length > 0 ? usersList[0]._id : null)
       };
 
+      const token = localStorage.getItem("token");
       const res = await fetch('/api/admin/events', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
 
@@ -697,7 +705,14 @@ export default function AdminDashboard() {
                 </p>
               </div>
               {currentView === 'events' && (
-                <button onClick={() => setShowCreateModal(true)} className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-105 transition-all flex items-center gap-2">
+                <button onClick={() => {
+                  setNewEvent({
+                    title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: ""
+                  });
+                  setEditingEvent(null);
+                  setImagePreview("");
+                  setShowCreateModal(true);
+                }} className="px-6 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 hover:scale-105 transition-all flex items-center gap-2">
                   <Plus size={20} /> Create New Event
                 </button>
               )}
@@ -799,6 +814,7 @@ export default function AdminDashboard() {
                     >
                       {filterMyEvents ? "My Events" : "All Events"}
                     </button>
+
                     {(filterCategory !== 'all' || filterStatus !== 'all' || filterDate) && (
                       <button
                         onClick={() => { setFilterCategory('all'); setFilterStatus('all'); setFilterDate(''); setSearchQuery(''); }}
@@ -865,16 +881,28 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {event.createdBy?._id === user._id && (
-                                <>
-                                  <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
-                                    <Edit size={18} />
-                                  </button>
-                                  <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                                    <Trash2 size={18} />
-                                  </button>
-                                </>
-                              )}
+                              {(() => {
+                                const isOwner = user && event.createdBy && (
+                                  (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
+                                  (String(event.createdBy) === String(user._id))
+                                );
+
+                                return isOwner && (
+                                  <>
+                                    {event.status === 'pending' && (
+                                      <button onClick={() => handleApproveEvent(event._id, true)} className="p-2 rounded-lg transition-all hover:bg-green-50 text-green-600" title="Approve/Publish">
+                                        <CheckCircle size={18} />
+                                      </button>
+                                    )}
+                                    <button onClick={() => { setEditingEvent(event); setNewEvent(event); setShowCreateModal(true); }} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-blue-400' : 'hover:bg-blue-50 text-blue-600'}`}>
+                                      <Edit size={18} />
+                                    </button>
+                                    <button onClick={() => handleDeleteEvent(event._id)} className={`p-2 rounded-lg transition-all ${darkMode ? 'hover:bg-white/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                         </tr>
@@ -1145,7 +1173,7 @@ export default function AdminDashboard() {
               <h2 className={`text-2xl font-bold bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent`}>
                 {editingEvent ? 'Edit Event' : 'Create New Event'}
               </h2>
-              <button onClick={() => setShowCreateModal(false)} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+              <button onClick={() => { setShowCreateModal(false); setEditingEvent(null); }} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
                 <X size={24} />
               </button>
             </div>
@@ -1268,7 +1296,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className={`flex-1 py-3 rounded-xl font-bold ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
+                <button type="button" onClick={() => { setShowCreateModal(false); setEditingEvent(null); }} className={`flex-1 py-3 rounded-xl font-bold ${darkMode ? 'bg-slate-800 hover:bg-slate-700' : 'bg-slate-100 hover:bg-slate-200'}`}>Cancel</button>
                 <button type="submit" className="flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg hover:shadow-pink-500/25 hover:scale-[1.02] transition-transform">
                   {editingEvent ? 'Update Event' : 'Create Event'}
                 </button>
