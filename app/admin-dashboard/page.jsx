@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const [filterDate, setFilterDate] = useState("");
   const [filterRegistrationEvent, setFilterRegistrationEvent] = useState("all");
   const [filterMyEvents, setFilterMyEvents] = useState(false);
+  const [expandedEvents, setExpandedEvents] = useState({}); // For accordion view
 
   // State for real data
   const [statsData, setStatsData] = useState({
@@ -267,16 +268,30 @@ export default function AdminDashboard() {
       trend: "alert",
       onClick: () => { setCurrentView("events"); setFilterStatus("pending"); setFilterMyEvents(true); }
     },
-    {
-      icon: Star,
-      label: "My Events",
-      value: eventsList.filter(e => e.createdBy?._id === user?._id).length.toString(),
-      change: "Created by you",
-      color: "pink",
-      trend: "neutral",
-      onClick: () => { setCurrentView("events"); setFilterMyEvents(true); }
-    }
+
   ];
+
+  // Group Registrations by Event
+  const groupedRegistrations = registrationsList.reduce((acc, reg) => {
+    if (!reg.event) return acc;
+    const eventId = reg.event._id;
+    if (!acc[eventId]) {
+      acc[eventId] = {
+        event: reg.event,
+        registrations: [],
+        pendingCount: 0,
+        approvedCount: 0
+      };
+    }
+    acc[eventId].registrations.push(reg);
+    if (reg.status === 'pending') acc[eventId].pendingCount++;
+    if (reg.status === 'approved') acc[eventId].approvedCount++;
+    return acc;
+  }, {});
+
+  const toggleEventAccordion = (eventId) => {
+    setExpandedEvents(prev => ({ ...prev, [eventId]: !prev[eventId] }));
+  };
 
   const events = eventsList; // Use fetched events
 
@@ -938,85 +953,125 @@ export default function AdminDashboard() {
             )}
 
             {currentView === "registrations" && (
-              <div className={`rounded-3xl border backdrop-blur-xl overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
+              <div className="space-y-6">
+                <header className="flex items-center justify-between mb-2">
+                  <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>Event Registrations</h2>
+                  <div className={`px-4 py-2 rounded-xl text-sm font-bold border ${darkMode ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-600'}`}>
+                    Total: {registrationsList.length} Requests
+                  </div>
+                </header>
 
-                {/* Filter Bar */}
-                <div className="p-6 border-b border-gray-500/10 flex gap-4 items-center">
-                  <Filter size={20} className="text-gray-400" />
-                  <select
-                    value={filterRegistrationEvent}
-                    onChange={(e) => setFilterRegistrationEvent(e.target.value)}
-                    className={`p-3 rounded-xl border appearance-none cursor-pointer flex-1 md:max-w-xs ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
-                  >
-                    <option value="all">All Events</option>
-                    {eventsList.filter(event => event.createdBy?._id === user?._id).map(event => (
-                      <option key={event._id} value={event._id}>{event.title}</option>
-                    ))}
-                  </select>
-                  {filterRegistrationEvent !== 'all' && (
-                    <button
-                      onClick={() => setFilterRegistrationEvent('all')}
-                      className={`p-3 rounded-xl border hover:bg-red-500/10 hover:text-red-500 transition-colors ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
-                    >
-                      <X size={20} />
-                    </button>
-                  )}
-                </div>
+                {Object.keys(groupedRegistrations).length === 0 ? (
+                  <div className={`p-12 text-center rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-600'}`}>
+                    <CheckCircle size={48} className="mx-auto mb-4 opacity-50" />
+                    <p>No registrations found.</p>
+                  </div>
+                ) : (
+                  Object.values(groupedRegistrations).map(({ event, registrations, pendingCount, approvedCount }) => (
+                    <div key={event._id} className={`rounded-3xl border overflow-hidden transition-all duration-300 ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
+                      {/* Accordion Header */}
+                      <div
+                        onClick={() => toggleEventAccordion(event._id)}
+                        className={`p-6 cursor-pointer flex items-center justify-between transition-colors ${darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={`p-3 rounded-xl ${darkMode ? 'bg-white/5' : 'bg-slate-100'}`}>
+                            <Calendar size={24} className="text-pink-500" />
+                          </div>
+                          <div>
+                            <h3 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</h3>
+                            <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                              {new Date(event.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className={`${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
-                      <tr className="text-left text-xs uppercase tracking-wider font-semibold">
-                        <th className="px-6 py-4">Event</th>
-                        <th className="px-6 py-4">User</th>
-                        <th className="px-6 py-4">Date</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
-                      {registrationsList
-                        .filter(reg => filterRegistrationEvent === 'all' || (reg.event && reg.event._id === filterRegistrationEvent))
-                        .map((reg) => (
-                          <tr key={reg._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                            <td className="px-6 py-4 font-medium">{reg.event?.title || 'Unknown Event'}</td>
-                            <td className="px-6 py-4">
-                              <div>
-                                <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.user?.fullName || 'Unknown User'}</p>
-                                <p className="text-xs opacity-70">{reg.user?.email}</p>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm opacity-70">
-                              {new Date(reg.createdAt).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'approved' ? 'bg-green-500/10 text-green-500' :
-                                reg.status === 'rejected' ? 'bg-red-500/10 text-red-500' :
-                                  'bg-yellow-500/10 text-yellow-500'
-                                }`}>
-                                {reg.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              {reg.status === 'pending' && (
-                                <div className="flex items-center justify-end gap-2">
-                                  <button onClick={() => handleApproveRegistration(reg._id, true)} className="p-2 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20" title="Approve">
-                                    <CheckCircle size={18} />
-                                  </button>
-                                  <button onClick={() => handleApproveRegistration(reg._id, false)} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20" title="Reject">
-                                    <XCircle size={18} />
-                                  </button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                  {registrationsList.length === 0 && (
-                    <div className="p-12 text-center opacity-50">No registrations found.</div>
-                  )}
-                </div>
+                        <div className="flex items-center gap-6">
+                          <div className="flex gap-4 text-sm font-medium">
+                            <span className="text-green-500">{approvedCount} Approved</span>
+                            <span className={pendingCount > 0 ? "text-orange-500" : "opacity-50"}>{pendingCount} Pending</span>
+                            <span className="opacity-50">{registrations.length} Total</span>
+                          </div>
+                          <div className={`transition-transform duration-300 ${expandedEvents[event._id] ? 'rotate-180' : ''}`}>
+                            <Menu size={20} className="opacity-50" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Accordion Content */}
+                      <motion.div
+                        initial={false}
+                        animate={{ height: expandedEvents[event._id] ? "auto" : 0, opacity: expandedEvents[event._id] ? 1 : 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="overflow-hidden"
+                      >
+                        <div className={`border-t ${darkMode ? 'border-white/10' : 'border-slate-100'}`}>
+                          <table className="w-full">
+                            <thead className={`${darkMode ? 'bg-white/5 text-slate-400' : 'bg-slate-50 text-slate-600'}`}>
+                              <tr className="text-left text-xs uppercase tracking-wider font-semibold">
+                                <th className="px-6 py-4 pl-10">User Details</th>
+                                <th className="px-6 py-4">Registration Date</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 text-right">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
+                              {registrations.map(reg => (
+                                <tr key={reg._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
+                                  <td className="px-6 py-4 pl-10">
+                                    <div>
+                                      <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.user?.fullName || 'Unknown'}</p>
+                                      <p className="text-xs opacity-70">{reg.user?.email}</p>
+                                      {reg.teamName && (
+                                        <p className="text-xs text-pink-500 mt-1">Team: {reg.teamName}</p>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm opacity-70">
+                                    {new Date(reg.createdAt).toLocaleDateString()}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase ${reg.status === 'approved' ? 'bg-green-500/10 text-green-500' :
+                                      reg.status === 'rejected' || reg.status === 'cancelled' ? 'bg-red-500/10 text-red-500' :
+                                        'bg-yellow-500/10 text-yellow-500'
+                                      }`}>
+                                      {reg.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      {/* Allow Approval if not already approved */}
+                                      {reg.status !== 'approved' && (
+                                        <button
+                                          onClick={() => handleApproveRegistration(reg._id, true)}
+                                          className="p-2 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20"
+                                          title="Approve"
+                                        >
+                                          <CheckCircle size={18} />
+                                        </button>
+                                      )}
+
+                                      {/* Allow Rejection if not already rejected - THIS IS THE FIX FOR "REVERT APPROVAL" */}
+                                      {reg.status !== 'rejected' && reg.status !== 'cancelled' && (
+                                        <button
+                                          onClick={() => handleApproveRegistration(reg._id, false)}
+                                          className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                                          title={reg.status === 'approved' ? "Revoke Approval" : "Reject"}
+                                        >
+                                          <XCircle size={18} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </motion.div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 

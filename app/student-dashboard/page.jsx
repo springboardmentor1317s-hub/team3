@@ -231,6 +231,51 @@ export default function StudentDashboard() {
     }
   };
 
+  const handleCancelRegistration = async (registration) => {
+    const eventDate = new Date(registration.event.date);
+    const today = new Date();
+    const diffTime = eventDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 2) {
+      return alert("Cannot cancel registration within 2 days of the event.");
+    }
+
+    if (!confirm("Are you sure you want to cancel your registration?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/registrations/${registration._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'cancelled' })
+      });
+
+      if (res.ok) {
+        setMyRegistrations(myRegistrations.map(r =>
+          r._id === registration._id ? { ...r, status: 'cancelled' } : r
+        ));
+        // Remove from local events view if needed or just update status
+        setEvents(events.map(ev =>
+          ev._id === registration.event._id ?
+            { ...ev, registeredCount: Math.max(0, (ev.registeredCount || 1) - 1), registeredUsers: ev.registeredUsers?.filter(id => id !== user._id) }
+            : ev
+        ));
+
+        alert("Registration cancelled successfully.");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to cancel registration");
+      }
+    } catch (error) {
+      console.error("Cancellation failed", error);
+      alert("Failed to cancel registration");
+    }
+  };
+
 
 
   const categories = [
@@ -602,13 +647,27 @@ export default function StudentDashboard() {
                           </div>
                         </div>
                       </div>
-                      {reg.status === 'approved' && (
-                        <button
-                          onClick={() => setSelectedTicket(reg)}
-                          className={`w-full md:w-auto md:ml-auto px-4 py-2 rounded-xl font-bold text-sm ${darkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
-                        >
-                          View Ticket
-                        </button>
+
+
+                      {reg.status !== 'cancelled' && reg.status !== 'rejected' && (
+                        <div className="w-full md:w-auto md:ml-auto flex gap-2">
+                          {reg.status === 'approved' && (
+                            <button
+                              onClick={() => setSelectedTicket(reg)}
+                              className={`px-4 py-2 rounded-xl font-bold text-sm ${darkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
+                            >
+                              View Ticket
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => handleCancelRegistration(reg)}
+                            className={`px-4 py-2 rounded-xl font-bold text-sm bg-red-500/10 text-red-500 hover:bg-red-500/20 shadow-sm`}
+                            title="Cancel Registration (Allowed until 2 days before event)"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
