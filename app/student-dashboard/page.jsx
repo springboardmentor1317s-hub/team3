@@ -171,6 +171,7 @@ export default function StudentDashboard() {
       });
 
       if (res.ok) {
+        const data = await res.json();
         // Optimistic UI update
         const updatedEvents = events.map(e => e._id === registrationEvent._id ?
           { ...e, registeredUsers: [...(e.registeredUsers || []), user._id], registeredCount: (e.registeredCount || 0) + 1 } : e
@@ -183,11 +184,8 @@ export default function StudentDashboard() {
 
         // Add to myRegistrations
         setMyRegistrations(prev => [{
-          _id: Date.now(), // Temp ID until refresh
-          event: registrationEvent,
-          user: user._id,
-          status: 'pending',
-          createdAt: new Date().toISOString()
+          ...data.registration,
+          event: registrationEvent // Keep full event object for display
         }, ...prev]);
 
         alert("Registration submitted! Waiting for admin approval.");
@@ -572,7 +570,7 @@ export default function StudentDashboard() {
                             : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"
                         }`}>
                         {getRegistrationStatus(event._id) === 'approved' ? "Registered" :
-                          getRegistrationStatus(event._id) === 'pending' ? "Pending Approval" :
+                          getRegistrationStatus(event._id) === 'pending' ? "Pending" :
                             getRegistrationStatus(event._id) === 'rejected' ? "Registration Rejected" :
                               "View Details"}
                       </button>
