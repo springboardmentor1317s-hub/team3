@@ -3,14 +3,15 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, Bell, Search, Filter, Star, User, LogOut, Settings,
   Home, Ticket, Heart, CheckCircle, Clock, XCircle, MapPin,
   Users, TrendingUp, Eye, Download, X, ChevronLeft, ChevronRight,
-  Moon, Sun, Menu
+  Moon, Sun, Menu, Briefcase, Printer
 } from "lucide-react";
 import Logo from "@/components/Logo";
+import Toast from "@/components/Toast";
 import { QRCodeSVG } from "qrcode.react";
 
 export default function StudentDashboard() {
@@ -39,6 +40,17 @@ export default function StudentDashboard() {
   const [memberInput, setMemberInput] = useState("");
   const [selectedTicket, setSelectedTicket] = useState(null); // For QR modal
   const [favorites, setFavorites] = useState([]); // Local state for favorites
+  const [showInterestModal, setShowInterestModal] = useState(false);
+  const [tempInterests, setTempInterests] = useState([]); // Temporary state for modal selections
+  const [toast, setToast] = useState({ message: "", type: "info" });
+
+  const showToast = (message, type = "info") => {
+    setToast({ message, type });
+  };
+
+  const closeToast = () => {
+    setToast({ message: "", type: "info" });
+  };
 
   // Initial Auth Check and Data Fetching
   useEffect(() => {
@@ -111,8 +123,8 @@ export default function StudentDashboard() {
   }, []);
 
   const handleRegisterClick = (event) => {
-    if (!user) return alert("Please login first");
-    if (event.registeredUsers?.includes(user._id)) return alert("Already registered!");
+    if (!user) return showToast("Please login first", "error");
+    if (event.registeredUsers?.includes(user._id)) return showToast("Already registered!", "info");
 
     setRegistrationEvent(event);
     setTeamName(""); // Reset
@@ -146,7 +158,7 @@ export default function StudentDashboard() {
 
   const addTeamMember = () => {
     if (!memberInput.trim()) return;
-    if (teamMembers.includes(memberInput.trim())) return alert("Member already added");
+    if (teamMembers.includes(memberInput.trim())) return showToast("Member already added", "error");
     setTeamMembers([...teamMembers, memberInput.trim()]);
     setMemberInput("");
   };
@@ -188,16 +200,16 @@ export default function StudentDashboard() {
           event: registrationEvent // Keep full event object for display
         }, ...prev]);
 
-        alert("Registration submitted! Waiting for admin approval.");
+        showToast("Registration submitted! Waiting for admin approval.", "success");
         setShowRegisterModal(false);
         setRegistrationEvent(null);
       } else {
         const data = await res.json();
-        alert(data.error || "Registration failed");
+        showToast(data.error || "Registration failed", "error");
       }
     } catch (e) {
       console.error("Registration failed", e);
-      alert("Registration failed");
+      showToast("Registration failed", "error");
     }
   };
 
@@ -221,24 +233,28 @@ export default function StudentDashboard() {
       if (res.ok) {
         const data = await res.json();
         setUser({ ...user, ...data.user });
-        alert("Profile updated successfully!");
+        showToast("Profile updated successfully!", "success");
         e.target.reset();
       } else {
-        alert("Failed to update profile");
+        showToast("Failed to update profile", "error");
       }
     } catch (error) {
       console.error("Update failed", error);
+      showToast("Failed to update profile", "error");
     }
   };
 
   const handleCancelRegistration = async (registration) => {
+    if (!registration || !registration.event) {
+      return showToast("Cannot cancel: Event details not found.", "error");
+    }
     const eventDate = new Date(registration.event.date);
     const today = new Date();
     const diffTime = eventDate - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 2) {
-      return alert("Cannot cancel registration within 2 days of the event.");
+      return showToast("Cannot cancel registration within 2 days of the event.", "error");
     }
 
     if (!confirm("Are you sure you want to cancel your registration?")) return;
@@ -265,14 +281,14 @@ export default function StudentDashboard() {
             : ev
         ));
 
-        alert("Registration cancelled successfully.");
+        showToast("Registration cancelled successfully.", "success");
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to cancel registration");
+        showToast(data.error || "Failed to cancel registration", "error");
       }
     } catch (error) {
       console.error("Cancellation failed", error);
-      alert("Failed to cancel registration");
+      showToast("Failed to cancel registration", "error");
     }
   };
 
@@ -302,14 +318,31 @@ export default function StudentDashboard() {
   const upcomingEventsCount = registeredEvents.filter(ev => new Date(ev.date) > new Date()).length;
   const pastEventsCount = registeredEvents.filter(ev => new Date(ev.date) < new Date()).length;
 
-  const notifications = myRegistrations.slice(0, 5).map((reg, i) => ({
-    id: i,
-    type: reg.status === 'approved' ? 'success' : reg.status === 'rejected' ? 'error' : 'warning',
-    message: reg.status === 'approved' ? `Registration approved for ${reg.event?.title}` :
-      reg.status === 'rejected' ? `Registration rejected for ${reg.event?.title}` :
-        `Registration pending for ${reg.event?.title}`,
-    time: new Date(reg.createdAt).toLocaleDateString()
-  }));
+  const notifications = [
+    // Registration notifications
+    ...myRegistrations.map((reg, i) => ({
+      id: `reg-${i}`,
+      type: reg.status === 'approved' ? 'success' : reg.status === 'rejected' ? 'error' : 'warning',
+      message: reg.status === 'approved' ? `Registration approved for ${reg.event?.title}` :
+        reg.status === 'rejected' ? `Registration rejected for ${reg.event?.title}` :
+          `Registration pending for ${reg.event?.title}`,
+      time: new Date(reg.createdAt), // Store as Date object for sorting
+      displayTime: new Date(reg.createdAt).toLocaleDateString()
+    })),
+    // New Event notifications (last 3 days)
+    ...events.filter(ev => {
+      const createdDate = new Date(ev.createdAt || ev.date); // Fallback to event date if createdAt missing
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      return createdDate > threeDaysAgo;
+    }).map((ev, i) => ({
+      id: `new-ev-${i}`,
+      type: 'info',
+      message: `🆕 New Event: ${ev.title} is now open for registration!`,
+      time: new Date(ev.createdAt || ev.date),
+      displayTime: new Date(ev.createdAt || ev.date).toLocaleDateString()
+    }))
+  ].sort((a, b) => b.time - a.time).slice(0, 5); // Sort by newest first and take top 5
 
   const getCategoryColor = (category) => {
     const colors = {
@@ -352,6 +385,79 @@ export default function StudentDashboard() {
   const textSecondary = darkMode ? "text-gray-400" : "text-gray-700";
   const hoverBg = darkMode ? "hover:bg-white/5" : "hover:bg-pink-100/50";
 
+  const handleUpdateInterests = async (selectedInterests) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/users/${user._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ interests: selectedInterests })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+        setShowInterestModal(false);
+        showToast("Interests updated successfully!", "success");
+      } else {
+        showToast("Failed to update interests", "error");
+      }
+    } catch (error) {
+      showToast("Error updating interests", "error");
+    }
+  };
+
+  // Initialize temp interests when modal opens
+  const openInterestModal = () => {
+    setTempInterests(user?.interests || []);
+    setShowInterestModal(true);
+  };
+
+  const getSmartMatches = () => {
+    if (!user?.interests || user.interests.length === 0) return [];
+
+    // Normalize user interests to lowercase for comparison, safely
+    const userInterestsLower = user.interests
+      .filter(i => typeof i === 'string')
+      .map(i => i.toLowerCase());
+
+    return events.filter(event => {
+      if (!event) return false;
+
+      // Logic: If event matches any of the user's interests via tags or category
+      const eventTags = (event.tags || [])
+        .filter(t => typeof t === 'string')
+        .map(t => t.toLowerCase());
+
+      const eventCategory = typeof event.category === 'string' ? event.category.toLowerCase() : '';
+
+      const hasTagMatch = eventTags.some(tag => userInterestsLower.includes(tag));
+      const hasCategoryMatch = eventCategory && userInterestsLower.includes(eventCategory);
+
+      // Filter out completed and cancelled, allow active and pending (if pending shows in feed)
+      const validStatus = event.status !== 'completed' && event.status !== 'cancelled';
+
+      return (hasTagMatch || hasCategoryMatch) && validStatus;
+    }).map(event => {
+      // Calculate match score
+      let score = 0;
+      const eventCategory = typeof event.category === 'string' ? event.category.toLowerCase() : '';
+      const eventTags = (event.tags || [])
+        .filter(t => typeof t === 'string')
+        .map(t => t.toLowerCase());
+
+      if (eventCategory && userInterestsLower.includes(eventCategory)) score += 5;
+
+      eventTags.forEach(tag => {
+        if (userInterestsLower.includes(tag)) score += 3;
+      });
+      return { ...event, matchScore: score };
+    }).sort((a, b) => b.matchScore - a.matchScore);
+  };
+
   if (loading) return <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>Loading CampusEventHub...</div>;
   if (!user) return <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>Please log in to continue.</div>;
 
@@ -392,6 +498,7 @@ export default function StudentDashboard() {
 
       {/* Navigation Bar */}
       <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b shadow-lg transition-all ${darkMode ? "bg-slate-950/70 border-white/10 shadow-black/20" : "bg-white/70 border-white/40 shadow-slate-200/50"}`}>
+        <Toast message={toast.message} type={toast.type} onClose={closeToast} />
         <div className="w-full px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -418,8 +525,39 @@ export default function StudentDashboard() {
                 <Bell size={20} />
                 {notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
               </button>
-              {/* Notification Dropdown (Optimized) */}
-            </div>
+              {/* Notification Dropdown */}
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className={`absolute right-0 top-full mt-4 w-80 md:w-96 rounded-2xl shadow-2xl border overflow-hidden z-50 ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}
+                  >
+                    <div className={`p-4 border-b ${darkMode ? 'border-white/10' : 'border-slate-100'}`}>
+                      <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {notifications.length > 0 ? (
+                        notifications.map((notif) => (
+                          <div key={notif.id} className={`p-4 border-b last:border-0 hover:bg-white/5 transition-colors flex gap-3 ${darkMode ? 'border-white/5' : 'border-slate-50'}`}>
+                            <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${notif.type === 'success' ? 'bg-green-500' : notif.type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`} />
+                            <div>
+                              <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{notif.message}</p>
+                              <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{notif.displayTime}</p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center opacity-50">
+                          <Bell size={32} className="mx-auto mb-2" />
+                          <p className="text-sm">No new notifications</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>            </div>
 
             <button onClick={handleLogout} className={`px-4 py-2.5 rounded-xl font-medium transition-all ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'}`}>
               Logout
@@ -436,8 +574,10 @@ export default function StudentDashboard() {
         <div className="px-6 py-6 space-y-2">
           {[
             { id: 'feed', icon: Home, label: 'Dashboard' },
+            { id: 'smart-match', icon: Star, label: 'For You' }, // NEW TAB
             { id: 'registered', icon: Ticket, label: 'My Events' },
             { id: 'calendar', icon: Calendar, label: 'Calendar' },
+            { id: 'achievements', icon: Briefcase, label: 'Achievements' },
             { id: 'favorites', icon: Heart, label: 'Favorites' },
             { id: 'settings', icon: Settings, label: 'Settings' }
           ].map((item) => (
@@ -765,6 +905,194 @@ export default function StudentDashboard() {
                 })}
               </div>
             </motion.div>
+          )}
+
+          {currentView === "achievements" && (
+            <div className={`p-8 rounded-3xl border backdrop-blur-xl ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <h2 className={`text-4xl font-bold mb-2 bg-gradient-to-r ${darkMode ? 'from-white via-pink-200 to-orange-200' : 'from-slate-900 via-purple-800 to-slate-900'} bg-clip-text text-transparent`}>
+                    My Extra-Curricular Achievements
+                  </h2>
+                  <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Official record of your event participation and achievements.</p>
+                </div>
+              </div>
+
+              {/* Portfolio Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'}`}>
+                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Total Events</p>
+                  <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{myRegistrations.filter(r => r.status === 'approved').length}</p>
+                </div>
+                <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'}`}>
+                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Categories</p>
+                  <p className={`text-3xl font-bold text-pink-500`}>
+                    {[...new Set(myRegistrations.filter(r => r.status === 'approved' && r.event).map(r => r.event.category))].length}
+                  </p>
+                </div>
+                <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'}`}>
+                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>First Event</p>
+                  <p className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-slate-900'} truncate`}>
+                    {myRegistrations.filter(r => r.status === 'approved').length > 0
+                      ? new Date(Math.min(...myRegistrations.filter(r => r.status === 'approved').map(r => new Date(r.event?.date)))).toLocaleDateString()
+                      : "N/A"}
+                  </p>
+                </div>
+                <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100'}`}>
+                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Status</p>
+                  <p className="text-lg font-bold text-green-500 flex items-center gap-2"><CheckCircle size={18} /> Active Student</p>
+                </div>
+              </div>
+
+              {/* Timeline / List */}
+              <div className="space-y-6">
+                <h3 className={`text-xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Activity Timeline</h3>
+                {myRegistrations.filter(r => r.status === 'approved' && r.event?.date && !isNaN(new Date(r.event.date).getTime())).length > 0 ? (
+                  myRegistrations
+                    .filter(r => r.status === 'approved' && r.event?.date && !isNaN(new Date(r.event.date).getTime()))
+                    .sort((a, b) => new Date(b.event?.date) - new Date(a.event?.date))
+                    .map((reg, index) => (
+                      <div key={index} className={`relative flex gap-6 p-6 rounded-2xl border transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-100 hover:shadow-lg'}`}>
+                        {/* Timeline Connector */}
+                        {index !== myRegistrations.filter(r => r.status === 'approved').length - 1 && (
+                          <div className={`absolute left-[43px] top-20 bottom-[-24px] w-0.5 ${darkMode ? 'bg-white/10' : 'bg-slate-200'}`}></div>
+                        )}
+
+                        <div className={`shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center text-2xl shadow-lg ${darkMode ? 'bg-gradient-to-br from-gray-800 to-black border border-white/10' : 'bg-white border border-slate-100 shadow-slate-200'}`}>
+                          {reg.event?.category === "Technology" ? "💻" :
+                            reg.event?.category === "Sports" ? "🏆" :
+                              reg.event?.category === "Cultural" ? "🎭" : "🎯"}
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                            <h4 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.event?.title}</h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${darkMode ? 'border-white/10 text-slate-300' : 'border-slate-200 text-slate-600'}`}>
+                              {new Date(reg.event?.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className={`mb-3 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                            Participated in {reg.event?.category} event at <span className="font-semibold">{reg.event?.college}</span>.
+                          </p>
+                          <div className="flex gap-2">
+                            <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${darkMode ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600'}`}>
+                              ✅ Participation Verified
+                            </span>
+                            {reg.teamMembers?.length > 0 && (
+                              <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${darkMode ? 'bg-purple-500/10 text-purple-400' : 'bg-purple-50 text-purple-600'}`}>
+                                👥 Team Leader
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  <div className="text-center py-20 opacity-50">
+                    <Briefcase size={48} className="mx-auto mb-4" />
+                    <p>No approved activities yet. Register for events to build your portfolio!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentView === "smart-match" && (
+            <div className="space-y-8">
+              <div className={`p-8 rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className={`text-3xl font-bold mb-2 bg-gradient-to-r ${darkMode ? 'from-white via-purple-200 to-blue-200' : 'from-slate-900 via-purple-800 to-slate-900'} bg-clip-text text-transparent`}>
+                      Smart Event Matching
+                    </h2>
+                    <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Events curated just for you based on your interests.
+                    </p>
+                  </div>
+                  <button
+                    onClick={openInterestModal}
+                    className={`px-6 py-3 rounded-xl font-bold transition-all shadow-lg ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+                  >
+                    <Settings size={18} className="inline mr-2" />
+                    Customize Interests
+                  </button>
+                </div>
+
+                {(!user?.interests || user.interests.length === 0) ? (
+                  <div className="text-center py-12">
+                    <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-white/5' : 'bg-slate-100'}`}>
+                      <Star size={32} className="text-yellow-500" />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">No interests selected yet</h3>
+                    <p className="mb-6 opacity-60">Tell us what you like to get personalized event recommendations.</p>
+                    <button
+                      onClick={openInterestModal}
+                      className="px-8 py-3 bg-gradient-to-r from-pink-600 to-orange-600 text-white rounded-xl font-bold shadow-lg hover:bg-pink-700"
+                    >
+                      Select Interests
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2 mb-8">
+                      <span className="text-sm font-medium opacity-60 flex items-center mr-2">Your Interests:</span>
+                      {user.interests.map(interest => (
+                        <span key={interest} className={`px-3 py-1 rounded-full text-xs font-bold border ${darkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                          {interest}
+                        </span>
+                      ))}
+                    </div>
+
+                    {getSmartMatches().length > 0 ? (
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {getSmartMatches().map((event, i) => (
+                          <motion.div
+                            key={event._id}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            className={`relative group rounded-3xl overflow-hidden border backdrop-blur-sm transition-all duration-300 ${darkMode ? 'bg-white/5 border-white/10 hover:shadow-2xl hover:shadow-purple-900/20' : 'bg-white border-slate-100 hover:shadow-2xl hover:shadow-slate-200'}`}
+                            onClick={() => setSelectedEvent(event)}
+                          >
+                            <div className="absolute top-4 right-4 z-20 px-3 py-1 rounded-full text-xs font-bold bg-green-500 text-white shadow-lg flex items-center gap-1">
+                              <Star size={12} fill="currentColor" /> {Math.round(event.matchScore / 8 * 100)}% Match
+                            </div>
+
+                            <div className="relative h-48 overflow-hidden">
+                              <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                              <div className="absolute top-4 left-4">
+                                <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold border border-white/20 shadow-lg">
+                                  {event.category}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="p-6">
+                              <h3 className={`text-xl font-bold mb-2 line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</h3>
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {(event.tags || []).slice(0, 3).map(tag => (
+                                  <span key={tag} className={`text-[10px] px-2 py-0.5 rounded-md ${user.interests.includes(tag) ? 'bg-green-500/20 text-green-500 border border-green-500/20' : 'bg-slate-500/10 text-slate-500'}`}>
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                              <div className="flex items-center justify-between text-sm opacity-70">
+                                <span>{new Date(event.date).toLocaleDateString()}</span>
+                                <button className={`font-bold hover:underline ${darkMode ? 'text-pink-400' : 'text-pink-600'}`}>View Details</button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 opacity-50 border-t border-dashed border-gray-700">
+                        <p>No events match your current interests perfectly right now. Try adding more interests!</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
           )}
 
           {currentView === "favorites" && (
@@ -1133,6 +1461,62 @@ export default function StudentDashboard() {
         )
       }
 
+      {/* Interest Profiler Modal */}
+      {showInterestModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`w-full max-w-lg rounded-3xl p-8 shadow-2xl ${darkMode ? 'bg-slate-900 border border-white/10 text-white' : 'bg-white text-slate-900'}`}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Customize Your Interests</h2>
+              <button onClick={() => setShowInterestModal(false)} className={`p-2 rounded-full ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <p className="mb-6 opacity-70">Select topics you are passionate about to get personalized event recommendations.</p>
+
+            <div className="flex flex-wrap gap-3 mb-8 max-h-[400px] overflow-y-auto custom-scrollbar p-1">
+              {[
+                "Technology", "Coding", "Design", "Business", "Marketing", "Finance",
+                "Public Speaking", "Leadership", "Music", "Dance", "Art", "Photography",
+                "Sports", "Fitness", "Yoga", "Gaming", "Hackathon", "Robotics", "AI",
+                "Science", "Literature", "Debate", "Social Service", "Environment"
+              ].map(interest => (
+                <button
+                  key={interest}
+                  onClick={() => {
+                    const current = tempInterests;
+                    if (current.includes(interest)) {
+                      setTempInterests(current.filter(i => i !== interest));
+                    } else {
+                      setTempInterests([...current, interest]);
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${tempInterests.includes(interest)
+                    ? 'bg-gradient-to-r from-pink-600 to-orange-600 text-white border-transparent shadow-lg transform scale-105'
+                    : darkMode
+                      ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                      : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+                    }`}
+                >
+                  {interest}
+                  {tempInterests.includes(interest) && <CheckCircle size={14} className="inline ml-2" />}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => handleUpdateInterests(tempInterests)}
+              className="w-full py-3.5 bg-gradient-to-r from-pink-600 to-orange-600 text-white hover:shadow-lg rounded-xl font-bold transition-all"
+            >
+              Save Interests
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div >
   );
 }

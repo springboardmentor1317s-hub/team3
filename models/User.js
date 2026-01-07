@@ -47,6 +47,10 @@ const UserSchema = new mongoose.Schema(
         ref: 'Event',
       },
     ],
+    interests: {
+      type: [String],
+      default: [],
+    },
   },
   { timestamps: true }
 );
