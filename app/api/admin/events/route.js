@@ -71,7 +71,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { title, description, category, date, time, location, college, totalSeats, registrationStartDate, registrationEndDate, teamSizeMin, teamSizeMax, image, tags } = await request.json();
+    const { title, description, category, date, time, location, college, totalSeats, registrationStartDate, registrationEndDate, teamSizeMin, teamSizeMax, image } = await request.json();
 
     const event = await Event.create({
       title,
@@ -89,7 +89,6 @@ export async function POST(request) {
       registrationStartDate: registrationStartDate || undefined,
       registrationEndDate: registrationEndDate || undefined,
       image: image || undefined,
-      tags: tags || [],
     });
 
     return NextResponse.json({ message: 'Event created', event }, { status: 201 });

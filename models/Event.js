@@ -15,10 +15,6 @@ const EventSchema = new mongoose.Schema(
       enum: ['Technology', 'Sports', 'Cultural', 'Academic', 'Business', 'Workshop', 'Music', 'Arts', 'Hackathon'],
       required: true,
     },
-    tags: {
-      type: [String],
-      default: [],
-    },
     date: {
       type: String,
       required: [true, 'Please provide event date'],

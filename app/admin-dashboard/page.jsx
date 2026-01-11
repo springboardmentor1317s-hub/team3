@@ -22,14 +22,12 @@ import {
   X,
   Bell,
   MapPin,
-  Star,
-  Download
+  Star
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Logo from "@/components/Logo";
-import Toast from "@/components/Toast";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -42,7 +40,7 @@ export default function AdminDashboard() {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterDate, setFilterDate] = useState("");
   const [filterRegistrationEvent, setFilterRegistrationEvent] = useState("all");
-  const [filterMyEvents, setFilterMyEvents] = useState(true); // Default to true (Show Only My Events)
+  const [filterMyEvents, setFilterMyEvents] = useState(false);
   const [expandedEvents, setExpandedEvents] = useState({}); // For accordion view
 
   // State for real data
@@ -76,19 +74,9 @@ export default function AdminDashboard() {
     registrationStartDate: "",
     registrationEndDate: "",
     image: "", // Event banner image
-    college: "", // Organizing College
-    tags: []
+    college: "" // Organizing College
   });
   const [imagePreview, setImagePreview] = useState("");
-  const [toast, setToast] = useState({ message: "", type: "info" });
-
-  const showToast = (message, type = "info") => {
-    setToast({ message, type });
-  };
-
-  const closeToast = () => {
-    setToast({ message: "", type: "info" });
-  };
 
   // Fetch data function
   const fetchData = async () => {
@@ -183,7 +171,7 @@ export default function AdminDashboard() {
     try {
       if (!user?._id) {
         console.error("User ID is missing!");
-        showToast("Error: User ID missing", "error");
+        alert("Error: User ID missing");
         return;
       }
       const res = await fetch(`/api/users/${user._id}`, {
@@ -196,13 +184,12 @@ export default function AdminDashboard() {
       if (res.ok) {
         const data = await res.json();
         setUser({ ...user, ...data.user });
-        setUser({ ...user, ...data.user });
-        showToast("Profile updated successfully!", "success");
+        alert("Profile updated successfully!");
         e.target.reset();
       } else {
         const errData = await res.json();
         console.error("Update failed response:", errData);
-        showToast(`Failed to update profile: ${errData.error || 'Unknown error'}`, "error");
+        alert(`Failed to update profile: ${errData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("Update failed network error", error);
@@ -235,11 +222,9 @@ export default function AdminDashboard() {
       if (res.ok) {
         setUsersList(usersList.filter(u => u._id !== id));
         setStatsData(prev => ({ ...prev, activeUsers: prev.activeUsers - 1 }));
-        setUsersList(usersList.filter(u => u._id !== id));
-        setStatsData(prev => ({ ...prev, activeUsers: prev.activeUsers - 1 }));
-        showToast("User deleted successfully", "success");
+        alert("User deleted successfully");
       } else {
-        showToast("Failed to delete user", "error");
+        alert("Failed to delete user");
       }
     } catch (error) {
       console.error("Failed to delete user", error);
@@ -321,8 +306,9 @@ export default function AdminDashboard() {
       (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
       (String(event.createdBy) === String(user._id))
     );
-    // Strict enforcement: Admin sees ONLY their own events
-    return matchesSearch && matchesCategory && matchesStatus && matchesDate && isOwner;
+    const matchesMyEvents = !filterMyEvents || isOwner;
+
+    return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
 
 
@@ -410,15 +396,15 @@ export default function AdminDashboard() {
     const day = String(today.getDate()).padStart(2, '0');
     const localToday = `${year}-${month}-${day}`;
 
-    if (newEvent.date < localToday) return showToast("Event date cannot be in the past.", "error");
+    if (newEvent.date < localToday) return alert("Event date cannot be in the past.");
 
     // Registration Validation
     if (newEvent.registrationEndDate && newEvent.date && newEvent.registrationEndDate > newEvent.date) {
-      return showToast("Registration cannot end after the event date.", "error");
+      return alert("Registration cannot end after the event date.");
     }
 
     if (newEvent.registrationStartDate && newEvent.registrationEndDate && newEvent.registrationStartDate > newEvent.registrationEndDate) {
-      return showToast("Registration start date cannot be after end date.", "error");
+      return alert("Registration start date cannot be after end date.");
     }
 
     try {
@@ -444,17 +430,17 @@ export default function AdminDashboard() {
         setStatsData(prev => ({ ...prev, totalEvents: prev.totalEvents + 1 }));
         setShowCreateModal(false);
         setNewEvent({
-          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: "", tags: []
+          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: ""
         });
         setImagePreview("");
-        showToast("Event created successfully!", "success");
+        alert("Event created successfully!");
       } else {
         const errorData = await res.json();
-        showToast(`Failed to create event: ${errorData.error || 'Unknown error'}`, "error");
+        alert(`Failed to create event: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("Failed to create event", error);
-      showToast(`Failed to create event: ${error.message}`, "error");
+      alert(`Failed to create event: ${error.message}`);
     }
   };
 
@@ -493,13 +479,12 @@ export default function AdminDashboard() {
         setNewEvent({ title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: "" });
         setImagePreview("");
         fetchData();
-        showToast("Event updated successfully!", "success");
+        alert("Event updated successfully!");
       } else {
-        showToast("Failed to update event", "error");
+        alert("Failed to update event");
       }
     } catch (error) {
       console.error("Error updating event", error);
-      showToast("Error updating event", "error");
     }
   };
 
@@ -540,35 +525,6 @@ export default function AdminDashboard() {
       timestamp: new Date(u.createdAt)
     }))
   ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
-
-  const handleExportCSV = async (eventId, eventTitle) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/admin/events/${eventId}/export-registrations`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${eventTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_registrations.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        a.remove();
-      } else {
-        const err = await res.json();
-        showToast(`Failed to export CSV: ${err.error || 'Unknown error'}`, "error");
-      }
-    } catch (error) {
-      console.error("Export failed", error);
-      showToast("Export failed", "error");
-    }
-  };
 
   const getStatusColor = (status) => {
     const colors = {
@@ -623,8 +579,6 @@ export default function AdminDashboard() {
           className={`absolute bottom-[-10%] left-[20%] w-[600px] h-[600px] blur-[100px] rounded-full mix-blend-screen opacity-50 ${darkMode ? 'bg-orange-600/20' : 'bg-orange-400/30'}`}
         />
       </div>
-
-      <Toast message={toast.message} type={toast.type} onClose={closeToast} />
 
       {/* Navigation Bar */}
       <nav className={`fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-b shadow-lg transition-all ${darkMode ? "bg-slate-950/70 border-white/10 shadow-black/20" : "bg-white/70 border-white/40 shadow-slate-200/50"}`}>
@@ -847,8 +801,7 @@ export default function AdminDashboard() {
                       className={`p-3 rounded-xl border cursor-pointer ${darkMode ? 'bg-slate-900/50 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
                     />
 
-                    {/* My Events Filter - HIDDEN (Always enforced) */}
-                    {/* 
+                    {/* My Events Filter */}
                     <button
                       onClick={() => setFilterMyEvents(!filterMyEvents)}
                       className={`p-3 rounded-xl border transition-all duration-300 cursor-pointer ${filterMyEvents
@@ -860,8 +813,7 @@ export default function AdminDashboard() {
                       title={filterMyEvents ? "Show All Events" : "Show Only My Events"}
                     >
                       {filterMyEvents ? "My Events" : "All Events"}
-                    </button> 
-                    */}
+                    </button>
 
                     {(filterCategory !== 'all' || filterStatus !== 'all' || filterDate) && (
                       <button
@@ -1035,18 +987,10 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="flex items-center gap-6">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleExportCSV(event._id, event.title); }}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold transition-colors ${darkMode ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-900/20' : 'bg-green-500 hover:bg-green-600 text-white shadow-green-200'}`}
-                            title="Export Registrations as CSV"
-                          >
-                            <Download size={16} />
-                            <span className="hidden md:inline">Export CSV</span>
-                          </button>
                           <div className="flex gap-4 text-sm font-medium">
                             <span className="text-green-500">{approvedCount} Approved</span>
                             <span className={pendingCount > 0 ? "text-orange-500" : "opacity-50"}>{pendingCount} Pending</span>
-                            <span className="opacity-50">{registrationsList.filter(r => r.event && r.event._id === event._id).length} Total</span>
+                            <span className="opacity-50">{registrations.length} Total</span>
                           </div>
                           <div className={`transition-transform duration-300 ${expandedEvents[event._id] ? 'rotate-180' : ''}`}>
                             <Menu size={20} className="opacity-50" />
@@ -1313,18 +1257,6 @@ export default function AdminDashboard() {
                   className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} focus:ring-2 focus:ring-pink-500 outline-none`}
                   required
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 opacity-80">Tags (Comma separated)</label>
-                <input
-                  type="text"
-                  placeholder="e.g., Coding, Python, Leadership (Press Enter or Comma to add)"
-                  value={newEvent.tags ? newEvent.tags.join(', ') : ''}
-                  onChange={(e) => setNewEvent({ ...newEvent, tags: e.target.value.split(',').map(t => t.trim()) })}
-                  className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} focus:ring-2 focus:ring-pink-500 outline-none`}
-                />
-                <p className="text-xs opacity-50 mt-1">These tags help match students with relevant skills and interests.</p>
               </div>
 
               <div>
