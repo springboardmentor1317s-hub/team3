@@ -8,9 +8,13 @@ export async function PUT(request, { params }) {
     try {
         await connectDB();
         const { id } = await params;
-        const { fullName, college, password } = await request.json();
+        const { fullName, college, password, interests } = await request.json();
 
         const updateData = { fullName, college };
+
+        if (interests !== undefined) {
+            updateData.interests = interests;
+        }
 
         if (password) {
             const hashedPassword = await bcrypt.hash(password, 10);

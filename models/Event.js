@@ -15,13 +15,25 @@ const EventSchema = new mongoose.Schema(
       enum: ['Technology', 'Sports', 'Cultural', 'Academic', 'Business', 'Workshop', 'Music', 'Arts', 'Hackathon'],
       required: true,
     },
+    tags: {
+      type: [String],
+      default: []
+    },
     date: {
       type: String,
       required: [true, 'Please provide event date'],
     },
     time: {
+      type: String, // Kept for backward compatibility or general text
+      required: false,
+    },
+    startTime: {
       type: String,
-      required: [true, 'Please provide event time'],
+      required: false, // Make optional initially to not break existing events
+    },
+    endTime: {
+      type: String,
+      required: false,
     },
     location: {
       type: String,
