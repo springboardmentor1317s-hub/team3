@@ -1,4 +1,4 @@
-'use client';
+'use client'; // Force Rebuild
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -53,7 +53,7 @@ export default function StudentDashboard() {
   const [toasts, setToasts] = useState([]);
 
   const showToast = (message, type = 'success', duration = 3000) => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type, duration }]);
   };
 
@@ -134,6 +134,37 @@ export default function StudentDashboard() {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return eventDate > sevenDaysAgo;
+  };
+
+  // Check if registration is open
+  const isRegistrationOpen = (event) => {
+    if (event.status !== 'active') return false;
+
+    const now = new Date();
+
+    // 1. If explicit end date set
+    if (event.registrationEndDate) {
+      const endDate = new Date(event.registrationEndDate);
+      endDate.setHours(23, 59, 59, 999);
+      return now <= endDate;
+    }
+
+    // 2. Fallback: Until Event Start Time
+    if (event.date) {
+      try {
+        const dateTimeStr = `${event.date}T${event.startTime || event.time || '00:00'}`;
+        const eventStart = new Date(dateTimeStr);
+        if (!isNaN(eventStart.getTime())) {
+          return now <= eventStart;
+        }
+        // Fallback if time parsing fails
+        const dayStart = new Date(event.date);
+        return now <= dayStart;
+      } catch (e) {
+        return true; // Fail open
+      }
+    }
+    return true; // No dates = open
   };
 
   // Get new events for notifications (sorted newest first)
@@ -330,9 +361,26 @@ export default function StudentDashboard() {
   // Check if event is currently live
   const isEventLive = (event) => {
     const now = new Date();
-    const eventDateTime = new Date(`${event.date} ${event.time}`);
-    const eventEnd = new Date(eventDateTime.getTime() + (3 * 60 * 60 * 1000)); // Assume 3 hour duration
-    return now >= eventDateTime && now <= eventEnd;
+    try {
+      const startTime = event.startTime || event.time || '00:00';
+      const eventStart = new Date(`${event.date}T${startTime}`);
+
+      let eventEnd;
+      if (event.endTime) {
+        eventEnd = new Date(`${event.date}T${event.endTime}`);
+        // Handle overnight events if end < start? (Assuming same day for now)
+        if (eventEnd < eventStart) {
+          eventEnd.setDate(eventEnd.getDate() + 1);
+        }
+      } else {
+        // Default duration 3 hours
+        eventEnd = new Date(eventStart.getTime() + (3 * 60 * 60 * 1000));
+      }
+
+      return now >= eventStart && now <= eventEnd;
+    } catch (e) {
+      return false;
+    }
   };
 
   // Submit feedback
@@ -1056,6 +1104,9 @@ export default function StudentDashboard() {
                           <h3 className={`text-xl font-bold line-clamp-1 mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</h3>
                           <div className="space-y-3 mb-6">
                             <div className="flex items-center gap-2 text-sm text-slate-500"><Calendar size={16} className="text-pink-500" /><span>{event.date}</span></div>
+                            {(event.startTime || event.time) && (
+                              <div className="flex items-center gap-2 text-sm text-slate-500"><Clock size={16} className="text-blue-500" /><span>{event.startTime}{event.endTime ? ` - ${event.endTime}` : ''} {(!event.startTime && event.time) ? event.time : ''}</span></div>
+                            )}
                             <div className="flex items-center gap-2 text-sm text-slate-500"><MapPin size={16} className="text-orange-500" /><span>{event.location}</span></div>
                           </div>
                           <button disabled={event.status === 'completed' || getRegistrationStatus(event._id) === 'approved' || getRegistrationStatus(event._id) === 'pending' || getRegistrationStatus(event._id) === 'rejected'} className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg ${event.status === 'completed' ? "bg-slate-500/20 text-slate-500 shadow-slate-500/10 cursor-not-allowed border border-slate-500/20" : getRegistrationStatus(event._id) === 'approved' ? "bg-green-500/20 text-green-500 shadow-green-500/10 cursor-default" : getRegistrationStatus(event._id) === 'pending' ? "bg-orange-500/20 text-orange-500 shadow-orange-500/10 cursor-default" : getRegistrationStatus(event._id) === 'rejected' ? "bg-red-500/20 text-red-500 shadow-red-500/10 cursor-default" : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"}`}>{event.status === 'completed' ? "Event Completed" : getRegistrationStatus(event._id) === 'approved' ? "Registered" : getRegistrationStatus(event._id) === 'pending' ? "Pending" : getRegistrationStatus(event._id) === 'rejected' ? "Registration Rejected" : "View Details"}</button>
@@ -1326,7 +1377,7 @@ export default function StudentDashboard() {
                     <span className="font-semibold">Date & Time</span>
                   </div>
                   <p className={textPrimary}>{new Date(selectedEvent.date).toLocaleDateString()}</p>
-                  <p className={`text-sm ${textSecondary}`}>{selectedEvent.time || "10:00 AM"}</p>
+                  <p className={`text-sm ${textSecondary}`}>{selectedEvent.startTime || selectedEvent.time ? `${selectedEvent.startTime || ''}${selectedEvent.endTime ? ' - ' + selectedEvent.endTime : ''} ${(!selectedEvent.startTime && selectedEvent.time) ? selectedEvent.time : ''}` : "Time N/A"}</p>
                 </div>
                 <div className={`p-4 rounded-2xl ${darkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <div className="flex items-center gap-3 mb-2 text-blue-400">
@@ -1373,29 +1424,49 @@ export default function StudentDashboard() {
               </div>
 
               <div className="flex items-center gap-4 pt-6 border-t border-white/10">
-                <div className="flex-1">
-                  <p className={`text-sm ${textSecondary} mb-1`}>Registration Fee</p>
-                  <p className={`text-2xl font-bold ${textPrimary}`}>{selectedEvent.price ? `₹${selectedEvent.price}` : 'Free'}</p>
-                </div>
+                <p className={`text-sm ${textSecondary} mb-1`}>Registration Fee</p>
+                <p className={`text-2xl font-bold ${textPrimary}`}>{selectedEvent.price ? `₹${selectedEvent.price}` : 'Free'}</p>
+              </div>
+              {isEventLive(selectedEvent) && (
                 <button
-                  onClick={() => { if (!getRegistrationStatus(selectedEvent._id)) handleRegisterClick(selectedEvent); }}
-                  className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${getRegistrationStatus(selectedEvent._id) === 'approved' ? 'bg-green-500/20 text-green-500 cursor-default' :
+                  onClick={() => {
+                    setFeedbackEvent(selectedEvent);
+                    setShowFeedbackModal(true);
+                  }}
+                  className="py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/30 hover:scale-105 transition-all flex items-center gap-2"
+                >
+                  <TrendingUp size={20} /> Give Feedback
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (selectedEvent.status === 'completed') return;
+                  if (!getRegistrationStatus(selectedEvent._id)) {
+                    if (isRegistrationOpen(selectedEvent)) {
+                      handleRegisterClick(selectedEvent);
+                    }
+                  }
+                }}
+                disabled={selectedEvent.status === 'completed' || (!isRegistrationOpen(selectedEvent) && !getRegistrationStatus(selectedEvent._id))}
+                className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${selectedEvent.status === 'completed' ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
+                  getRegistrationStatus(selectedEvent._id) === 'approved' ? 'bg-green-500/20 text-green-500 cursor-default' :
                     getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'bg-red-500/20 text-red-500 cursor-default' :
                       getRegistrationStatus(selectedEvent._id) === 'pending' ? 'bg-yellow-500/20 text-yellow-500 cursor-default' :
-                        'bg-gradient-to-r from-pink-600 to-orange-600 text-white hover:scale-105 shadow-lg shadow-pink-500/20'
-                    }`}
-                >
-                  {getRegistrationStatus(selectedEvent._id) === 'approved' ? 'Registration Approved' :
+                        !isRegistrationOpen(selectedEvent) ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
+                          'bg-gradient-to-r from-pink-600 to-orange-600 text-white hover:scale-105 shadow-lg shadow-pink-500/20'
+                  }`}
+              >
+                {selectedEvent.status === 'completed' ? 'Event Completed' :
+                  getRegistrationStatus(selectedEvent._id) === 'approved' ? 'Registration Approved' :
                     getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'Registration Rejected' :
                       getRegistrationStatus(selectedEvent._id) === 'pending' ? 'Approval Pending' :
-                        'Register Now'}
-                </button>
-              </div>
+                        !isRegistrationOpen(selectedEvent) ? 'Registration Closed' :
+                          'Register Now'}
+              </button>
             </div>
           </div>
         </div>
-      )
-      }
+      )}
 
 
       {
@@ -1499,7 +1570,7 @@ export default function StudentDashboard() {
               <div className="h-40 bg-gradient-to-br from-pink-600 to-orange-600 relative p-6 flex flex-col justify-end">
                 <h3 className="text-white font-bold text-2xl leading-none">{selectedTicket.event?.title || "Event Details Unavailable"}</h3>
                 <p className="text-white/80 text-sm mt-1">
-                  {selectedTicket.event?.date ? new Date(selectedTicket.event.date).toLocaleDateString() : "Date N/A"} • {selectedTicket.event?.time || "Time N/A"}
+                  {selectedTicket.event?.date ? new Date(selectedTicket.event.date).toLocaleDateString() : "Date N/A"} • {selectedTicket.event?.startTime || selectedTicket.event?.time ? `${selectedTicket.event?.startTime || ''}${selectedTicket.event?.endTime ? ' - ' + selectedTicket.event?.endTime : ''} ${(!selectedTicket.event?.startTime && selectedTicket.event?.time) ? selectedTicket.event?.time : ''}` : "Time N/A"}
                 </p>
                 <div className="absolute -bottom-6 right-6 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
                   <Logo size={24} />
@@ -1534,30 +1605,34 @@ export default function StudentDashboard() {
       }
 
       {/* Feedback Modal */}
-      {showFeedbackModal && feedbackEvent && (
-        <FeedbackModal
-          event={feedbackEvent}
-          onClose={() => {
-            setShowFeedbackModal(false);
-            setFeedbackEvent(null);
-          }}
-          onSubmit={handleSubmitFeedback}
-          darkMode={darkMode}
-        />
-      )}
+      {
+        showFeedbackModal && feedbackEvent && (
+          <FeedbackModal
+            event={feedbackEvent}
+            onClose={() => {
+              setShowFeedbackModal(false);
+              setFeedbackEvent(null);
+            }}
+            onSubmit={handleSubmitFeedback}
+            darkMode={darkMode}
+          />
+        )
+      }
 
       {/* Review Modal */}
-      {showReviewModal && reviewEvent && (
-        <ReviewModal
-          event={reviewEvent}
-          onClose={() => {
-            setShowReviewModal(false);
-            setReviewEvent(null);
-          }}
-          onSubmit={handleSubmitReview}
-          darkMode={darkMode}
-        />
-      )}
+      {
+        showReviewModal && reviewEvent && (
+          <ReviewModal
+            event={reviewEvent}
+            onClose={() => {
+              setShowReviewModal(false);
+              setReviewEvent(null);
+            }}
+            onSubmit={handleSubmitReview}
+            darkMode={darkMode}
+          />
+        )
+      }
 
     </div >
   );

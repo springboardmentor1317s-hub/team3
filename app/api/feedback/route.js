@@ -15,13 +15,15 @@ export async function POST(request) {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const userId = decoded.userId;
+        const userId = decoded.userId || decoded.id;
 
         const { eventId, reactionType } = await request.json();
+        console.log('Feedback Request:', { eventId, userId, reactionType });
 
         // Validate reaction type
         const validReactions = ['interesting', 'boring', 'confusing', 'tooFast', 'tooSlow', 'clear'];
         if (!validReactions.includes(reactionType)) {
+            console.error('Invalid reaction type:', reactionType);
             return NextResponse.json({ error: 'Invalid reaction type' }, { status: 400 });
         }
 

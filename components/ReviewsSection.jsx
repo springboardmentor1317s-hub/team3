@@ -1,4 +1,4 @@
-'use client';
+'use client'; // Force Rebuild
 
 import { motion } from 'framer-motion';
 import StarRating from './StarRating';

@@ -9,7 +9,7 @@ export async function POST(request) {
   try {
     await connectDB();
 
-    const { email, password, role } = await request.json();
+    const { email, password, role, rememberMe } = await request.json();
 
     // Validation
     if (!email || !password) {
@@ -49,7 +49,7 @@ export async function POST(request) {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: rememberMe ? '30d' : '1d' }
     );
 
     return NextResponse.json(

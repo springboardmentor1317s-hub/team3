@@ -56,7 +56,7 @@ export default function AdminDashboard() {
     pendingApprovals: 0
   });
   const [eventsList, setEventsList] = useState([]);
-  const [usersList, setUsersList] = useState([]);
+
   const [registrationsList, setRegistrationsList] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
   const [toasts, setToasts] = useState([]);
 
   const showToast = (message, type = 'success', duration = 3000) => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type, duration }]);
   };
 
@@ -111,11 +111,10 @@ export default function AdminDashboard() {
         return;
       }
 
-      const [meRes, statsRes, eventsRes, usersRes, regsRes] = await Promise.all([
+      const [meRes, statsRes, eventsRes, regsRes] = await Promise.all([
         fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } }),
         fetch('/api/admin/events', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/admin/users'),
         fetch('/api/admin/registrations', { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
@@ -137,10 +136,7 @@ export default function AdminDashboard() {
         setEventsList(data.events || []);
       }
 
-      if (usersRes.ok) {
-        const data = await usersRes.json();
-        setUsersList(data.users || []);
-      }
+
 
       if (regsRes.ok) {
         const data = await regsRes.json();
@@ -278,21 +274,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (id) => {
-    if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
-    try {
-      const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setUsersList(usersList.filter(u => u._id !== id));
-        setStatsData(prev => ({ ...prev, activeUsers: prev.activeUsers - 1 }));
-        showToast("User deleted successfully", "success");
-      } else {
-        showToast("Failed to delete user", "error");
-      }
-    } catch (error) {
-      console.error("Failed to delete user", error);
-    }
-  };
+
 
   const stats = [
     {
@@ -304,15 +286,7 @@ export default function AdminDashboard() {
       trend: "up",
       onClick: () => { setCurrentView("events"); setFilterMyEvents(false); }
     },
-    {
-      icon: Users,
-      label: "Active Users",
-      value: statsData.activeUsers.toString(),
-      change: "Total registered",
-      color: "blue",
-      trend: "up",
-      onClick: () => setCurrentView("users")
-    },
+
     {
       icon: CheckCircle,
       label: "Total Registrations",
@@ -337,6 +311,19 @@ export default function AdminDashboard() {
   // Group Registrations by Event
   const groupedRegistrations = registrationsList.reduce((acc, reg) => {
     if (!reg.event) return acc;
+
+    // Ownership Check (ID or Email)
+    const creator = reg.event.createdBy;
+    const isOwner = user && (
+      // ID Match
+      (creator?._id && String(creator._id) === String(user._id || user.id)) ||
+      (String(creator) === String(user._id || user.id)) ||
+      // Email Match (Fallback)
+      (creator?.email && user.email && creator.email === user.email)
+    );
+
+    if (!isOwner) return acc; // Strictly show only mine (or email matched)
+
     const eventId = reg.event._id;
     if (!acc[eventId]) {
       acc[eventId] = {
@@ -365,11 +352,23 @@ export default function AdminDashboard() {
     const matchesCategory = filterCategory === "all" || event.category === filterCategory;
     const matchesStatus = filterStatus === "all" || event.status === filterStatus;
     const matchesDate = !filterDate || event.date === filterDate;
-    const isOwner = user && event.createdBy && (
-      (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
-      (String(event.createdBy) === String(user._id))
+
+    // Robust Ownership (ID or Email)
+    const creator = event.createdBy;
+    const isOwner = user && (
+      (creator?._id && String(creator._id) === String(user._id || user.id)) ||
+      (String(creator) === String(user._id || user.id)) ||
+      (creator?.email && user.email && creator.email === user.email)
     );
+    // Explicit: If "My Events" is unchecked, we still only currently show 'isOwner' based on previous "only mine" request.
+    // But since we reverted, standard behavior is usually "Show All".
+    // However, user said "I want access only for events that are created by me".
+    // So we will enforce isOwner if filter is TRUE.
     const matchesMyEvents = !filterMyEvents || isOwner;
+
+    // WAIT: User complained "Not visible". If filterMyEvents defaults to FALSE (All), they should see it.
+    // If they see it but can't edit, isOwner check in render fails.
+    // So upgrading isOwner logic handles both visibility and edit buttons.
 
     return matchesSearch && matchesCategory && matchesStatus && matchesDate && matchesMyEvents;
   });
@@ -475,7 +474,7 @@ export default function AdminDashboard() {
       const payload = {
         ...newEvent,
         tags: typeof newEvent.tags === 'string' ? newEvent.tags.split(',').map(t => t.trim()).filter(t => t.length > 0) : newEvent.tags,
-        createdBy: user?._id || (usersList.length > 0 ? usersList[0]._id : null)
+        createdBy: user?._id
       };
 
       const token = localStorage.getItem("token");
@@ -494,7 +493,7 @@ export default function AdminDashboard() {
         setStatsData(prev => ({ ...prev, totalEvents: prev.totalEvents + 1 }));
         setShowCreateModal(false);
         setNewEvent({
-          title: "", description: "", category: "Technology", date: "", time: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: ""
+          title: "", description: "", category: "Technology", date: "", time: "", startTime: "", endTime: "", location: "", college: "", totalSeats: 100, teamSizeMin: 1, teamSizeMax: 1, registrationStartDate: "", registrationEndDate: "", image: ""
         });
         setImagePreview("");
         showToast("Event created successfully!", "success");
@@ -617,23 +616,7 @@ export default function AdminDashboard() {
     router.replace("/login");
   };
 
-  // Derived Activity Log
-  const derivedActivity = [
-    ...eventsList.map(ev => ({
-      _id: ev._id,
-      type: 'event',
-      message: `New Event: ${ev.title}`,
-      time: new Date(ev.createdAt).toLocaleString(),
-      timestamp: new Date(ev.createdAt)
-    })),
-    ...usersList.map(u => ({
-      _id: u._id,
-      type: 'user',
-      message: `New User: ${u.fullName}`,
-      time: new Date(u.createdAt).toLocaleString(),
-      timestamp: new Date(u.createdAt)
-    }))
-  ].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+
 
   const getStatusColor = (status) => {
     const colors = {
@@ -760,7 +743,7 @@ export default function AdminDashboard() {
             {[
               { id: 'overview', icon: BarChart3, label: 'Overview' },
               { id: 'events', icon: Calendar, label: 'Event Management' },
-              { id: 'users', icon: Users, label: 'User Management' },
+
               { id: 'registrations', icon: CheckCircle, label: 'Registrations' },
               { id: 'feedback', icon: MessageSquare, label: 'Live Feedback' },
               { id: 'reviews', icon: Star, label: 'Reviews' },
@@ -808,12 +791,11 @@ export default function AdminDashboard() {
                 <h1 className={`text-4xl font-bold bg-gradient-to-r ${darkMode ? 'from-white via-pink-200 to-orange-200' : 'from-slate-900 via-purple-800 to-slate-900'} bg-clip-text text-transparent mb-2`}>
                   {currentView === 'overview' ? 'Dashboard Overview' :
                     currentView === 'events' ? 'Event Management' :
-                      currentView === 'users' ? 'User Directory' :
-                        currentView === 'registrations' ? 'Registration Requests' :
-                          currentView === 'feedback' ? 'Live Feedback' :
-                            currentView === 'reviews' ? 'Post-Event Reviews' :
-                              currentView === 'analytics' ? 'Analytics & Insights' :
-                                currentView === 'settings' ? 'Settings' : 'Dashboard'}
+                      currentView === 'registrations' ? 'Registration Requests' :
+                        currentView === 'feedback' ? 'Live Feedback' :
+                          currentView === 'reviews' ? 'Post-Event Reviews' :
+                            currentView === 'analytics' ? 'Analytics & Insights' :
+                              currentView === 'settings' ? 'Settings' : 'Dashboard'}
                 </h1>
 
               </div>
@@ -969,6 +951,9 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4">
                             <div className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                               <p className="flex items-center gap-2"><Calendar size={14} className="text-pink-500" /> {event.date}</p>
+                              {(event.startTime || event.time) && (
+                                <p className="flex items-center gap-2 mt-1"><Clock size={14} className="text-blue-500" /> {event.startTime}{event.endTime ? ` - ${event.endTime}` : ''} {(!event.startTime && event.time) ? event.time : ''}</p>
+                              )}
                               <p className="flex items-center gap-2 mt-1"><MapPin size={14} className="text-orange-500" /> {event.location}</p>
                             </div>
                           </td>
@@ -995,9 +980,11 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-2">
                               {(() => {
-                                const isOwner = user && event.createdBy && (
-                                  (event.createdBy._id && String(event.createdBy._id) === String(user._id)) ||
-                                  (String(event.createdBy) === String(user._id))
+                                const creator = event.createdBy;
+                                const isOwner = user && (
+                                  (creator?._id && String(creator._id) === String(user._id || user.id)) ||
+                                  (String(creator) === String(user._id || user.id)) ||
+                                  (creator?.email && user.email && creator.email === user.email)
                                 );
 
                                 return isOwner && (
@@ -1033,37 +1020,7 @@ export default function AdminDashboard() {
 
 
 
-            {currentView === "users" && (
-              <div className={`p-1 rounded-3xl overflow-hidden border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
-                <table className="w-full">
-                  <thead className={`${darkMode ? 'bg-white/5 text-slate-300' : 'bg-slate-50 text-slate-600'}`}>
-                    <tr>
-                      <th className="px-6 py-4 text-left">User</th>
-                      <th className="px-6 py-4 text-left">Email</th>
-                      <th className="px-6 py-4 text-left">College</th>
-                      <th className="px-6 py-4 text-left">Role</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
-                    {usersList.filter(u => u.role === 'student').map(u => (
-                      <tr key={u._id} className={darkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}>
-                        <td className="px-6 py-4 flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">{u.fullName?.charAt(0) || '?'}</div>
-                          <span className={darkMode ? "text-white" : "text-slate-900"}>{u.fullName || 'Unknown User'}</span>
-                        </td>
-                        <td className="px-6 py-4 text-sm opacity-70">{u.email}</td>
-                        <td className="px-6 py-4 text-sm opacity-70">{u.college}</td>
-                        <td className="px-6 py-4"><span className="px-2 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-500 uppercase">{u.role}</span></td>
-                        <td className="px-6 py-4 text-right">
-                          <button onClick={() => handleDeleteUser(u._id)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+
 
             {currentView === "registrations" && (
               <div className="space-y-6">
@@ -1440,7 +1397,7 @@ export default function AdminDashboard() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2 opacity-80">Date</label>
                       <input type="date" min={localToday} value={newEvent.date} onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} required />
@@ -1503,7 +1460,7 @@ export default function AdminDashboard() {
                       <input type="date" min={localToday} max={newEvent.registrationEndDate || newEvent.date} value={newEvent.registrationStartDate?.split('T')[0] || ''} onChange={(e) => setNewEvent({ ...newEvent, registrationStartDate: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2 opacity-80">Registration End</label>
+                      <label className="block text-sm font-medium text-slate-400 mb-2">Registration End Date (Optional) <span className="text-xs text-slate-500 block">Leave blank to keep open until event starts</span></label>
                       <input type="date" min={localToday} max={newEvent.date} value={newEvent.registrationEndDate?.split('T')[0] || ''} onChange={(e) => setNewEvent({ ...newEvent, registrationEndDate: e.target.value })} className={`w-full p-3 rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`} />
                     </div>
                   </div>

@@ -40,7 +40,15 @@ export async function GET(request) {
     const totalUsers = await User.countDocuments();
 
     // User-scoped stats
-    const myEvents = await Event.find({ createdBy: userId }).select('_id registeredCount status');
+    // User-scoped stats (Multi-ID support)
+    const currentUser = await User.findById(userId);
+    let myUserIds = [userId];
+    if (currentUser && currentUser.email) {
+      const usersWithSameEmail = await User.find({ email: currentUser.email }).select('_id');
+      myUserIds = usersWithSameEmail.map(u => u._id);
+    }
+
+    const myEvents = await Event.find({ createdBy: { $in: myUserIds } }).select('_id registeredCount status');
     const myEventIds = myEvents.map(e => e._id);
 
     const pendingMyEvents = myEvents.filter(e => e.status === 'pending').length;
