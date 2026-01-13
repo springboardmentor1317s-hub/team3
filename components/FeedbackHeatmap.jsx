@@ -38,15 +38,14 @@ export default function FeedbackHeatmap({ data, startTime, darkMode }) {
 
     const { timeBuckets, insights } = data;
 
-    // Helper to format minutes from start into absolute time
-    const formatTime = (minutesFromStart) => {
-        if (!startTime) return `${minutesFromStart} min`;
+    // Helper to format ms from start into absolute time with seconds
+    const formatTime = (msFromStart) => {
+        if (!startTime) return `${Math.floor(msFromStart / 60000)}m`;
         try {
-            const date = new Date(startTime);
-            date.setMinutes(date.getMinutes() + minutesFromStart);
-            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const date = new Date(new Date(startTime).getTime() + msFromStart);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         } catch (e) {
-            return `${minutesFromStart} min`;
+            return `${Math.floor(msFromStart / 60000)}m`;
         }
     };
 
@@ -193,6 +192,12 @@ export default function FeedbackHeatmap({ data, startTime, darkMode }) {
                 <div className="h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                            <defs>
+                                <linearGradient id="sentimentGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#d946ef" stopOpacity={0.8} />
+                                    <stop offset="95%" stopColor="#d946ef" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#334155" : "#e2e8f0"} />
                             <XAxis
                                 dataKey="name"
@@ -205,12 +210,10 @@ export default function FeedbackHeatmap({ data, startTime, darkMode }) {
                                 axisLine={false}
                                 tickLine={false}
                                 tick={{ fill: darkMode ? '#94a3b8' : '#64748b', fontSize: 12 }}
+                                domain={['auto', 'auto']}
                             />
                             <Tooltip content={<CustomTooltip />} />
-                            <Legend
-                                iconType="circle"
-                                wrapperStyle={{ paddingTop: '20px' }}
-                            />
+
                             <ReferenceLine y={0} stroke={darkMode ? "#64748b" : "#cbd5e1"} strokeDasharray="3 3" />
 
                             {/* Sentiment Line - The "Curve" */}
@@ -219,24 +222,11 @@ export default function FeedbackHeatmap({ data, startTime, darkMode }) {
                                 dataKey="Net Sentiment"
                                 stroke="#d946ef"
                                 strokeWidth={4}
-                                dot={{ r: 0 }}
+                                dot={{ r: 4, fill: '#d946ef', strokeWidth: 2, stroke: darkMode ? '#0f172a' : '#fff' }}
                                 activeDot={{ r: 8, strokeWidth: 0 }}
                                 connectNulls
+                                animationDuration={1000}
                             />
-
-                            {/* Individual Reaction Lines (Thinner) */}
-                            {reactions.map((r) => (
-                                <Line
-                                    key={r.type}
-                                    type="monotone"
-                                    dataKey={r.label}
-                                    stroke={r.color}
-                                    strokeWidth={1}
-                                    strokeOpacity={0.6}
-                                    dot={false}
-                                    activeDot={{ r: 4, strokeWidth: 0 }}
-                                />
-                            ))}
                         </LineChart>
                     </ResponsiveContainer>
                 </div>

@@ -100,14 +100,14 @@ function aggregateFeedback(feedback, event) {
     }
 
     const eventStart = new Date(event.date + ' ' + event.time);
-    const bucketSize = 5 * 60 * 1000; // 5 minutes in milliseconds
+    const bucketSize = 10 * 1000; // 10 seconds in milliseconds
     const buckets = {};
 
-    // Group feedback into 5-min buckets
+    // Group feedback into 10-sec buckets
     feedback.forEach(f => {
         const elapsed = new Date(f.timestamp) - eventStart;
         const bucketIndex = Math.floor(elapsed / bucketSize);
-        const bucketKey = bucketIndex * 5; // minutes from start
+        const bucketKey = bucketIndex * bucketSize; // milliseconds from start
 
         if (!buckets[bucketKey]) {
             buckets[bucketKey] = {

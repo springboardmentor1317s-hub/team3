@@ -191,7 +191,14 @@ export default function AdminDashboard() {
           const lastBucket = data.aggregated.timeBuckets[data.aggregated.timeBuckets.length - 1];
           const boringCount = lastBucket.reactions?.boring || 0;
           const confusingCount = lastBucket.reactions?.confusing || 0;
-          if (boringCount + confusingCount > 10) {
+          const interestingCount = lastBucket.reactions?.interesting || 0;
+          const clearCount = lastBucket.reactions?.clear || 0;
+
+          const negative = boringCount + confusingCount;
+          const positive = interestingCount + clearCount;
+
+          // Only warn if negatives significantly outweigh positives
+          if (negative > 5 && negative > positive) {
             showToast('⚠️ Engagement dropped in last 5 minutes', 'error', 5000);
           }
         }
