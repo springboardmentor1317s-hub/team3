@@ -21,8 +21,8 @@ export default function StarRating({ value = 0, onChange, readonly = false, size
                     <Star
                         size={size}
                         className={`${star <= value
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'fill-none text-gray-300'
+                            ? 'fill-pink-400 text-pink-500'
+                            : 'fill-none text-gray-300'
                             } transition-all`}
                     />
                 </motion.button>

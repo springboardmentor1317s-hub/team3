@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Hardcoded placeholders to show if no events are found
@@ -41,18 +41,17 @@ export default function Home() {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch('/api/admin/events');
+      // Use public events API with status filter
+      const res = await fetch('/api/events?status=active');
       if (res.ok) {
         const data = await res.json();
-        // Filter for active events and take only top 5 recent ones
-        const activeEvents = data.events
-          .filter(e => e.status === 'active')
-          .slice(0, 5);
+        // API already sorts by createdAt desc. We just take top 3.
+        const newestEvents = data.events.slice(0, 3);
 
-        if (activeEvents.length > 0) {
-          setEvents(activeEvents);
+        if (newestEvents.length > 0) {
+          setEvents(newestEvents);
         } else {
-          setEvents(placeholderEvents); // Fallback if no active events
+          setEvents(placeholderEvents);
         }
       } else {
         setEvents(placeholderEvents);

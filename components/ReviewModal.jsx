@@ -3,17 +3,18 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import StarRating from './StarRating';
 
 const MOODS = [
-    { emoji: '😍', label: 'Excellent', value: 5 },
-    { emoji: '🙂', label: 'Good', value: 4 },
-    { emoji: '😐', label: 'Average', value: 3 },
-    { emoji: '😕', label: 'Poor', value: 2 },
-    { emoji: '😡', label: 'Terrible', value: 1 },
+    { label: 'Excellent', value: 5 },
+    { label: 'Good', value: 4 },
+    { label: 'Average', value: 3 },
+    { label: 'Poor', value: 2 },
+    { label: 'Terrible', value: 1 },
 ];
 
 const FEEDBACK_TAGS = [
-    'Well Organized', 'Fun Activities', 'Late Start', 'Poor Audio', 'Great Speakers', 'Bad Location', 'Good Food'
+    'Well Organized', 'Fun Activities', 'Great Speakers', 'Good Food', 'Engaging Content', 'Excellent Venue', 'Great Networking', 'Inspiring'
 ];
 
 export default function ReviewModal({ event, onClose, onSubmit, darkMode }) {
@@ -55,7 +56,7 @@ export default function ReviewModal({ event, onClose, onSubmit, darkMode }) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 onClick={(e) => e.stopPropagation()}
-                className={`w-full max-w-md rounded-3xl overflow-hidden shadow-2xl transition-colors duration-300 ${darkMode ? 'bg-slate-950 border border-white/10 text-white' : 'bg-white border border-slate-200 text-slate-900'
+                className={`w-full max-w-md rounded-3xl overflow-hidden shadow-2xl transition-colors duration-300 ${darkMode ? 'bg-neutral-950 border border-amber-500/20 text-white' : 'bg-white border border-slate-200 text-slate-900'
                     }`}
             >
                 <div className="relative p-6 space-y-8">
@@ -76,27 +77,19 @@ export default function ReviewModal({ event, onClose, onSubmit, darkMode }) {
                     </div>
 
                     {/* Step 1: Mood Selection */}
-                    <div className="flex justify-center gap-3 sm:gap-4">
-                        {MOODS.map((m) => (
-                            <button
-                                key={m.value}
-                                onClick={() => setMood(m.value)}
-                                className={`relative p-3 rounded-full transition-all duration-200 focus:outline-none ${mood === m.value
-                                        ? "bg-slate-100 dark:bg-slate-800 scale-110 shadow-sm"
-                                        : "opacity-70 hover:opacity-100 hover:scale-105"
-                                    }`}
-                            >
-                                <span className="text-3xl sm:text-4xl filter drop-shadow-sm">{m.emoji}</span>
-                                {mood === m.value && (
-                                    <motion.div
-                                        layoutId="activeMood"
-                                        className="absolute inset-0 rounded-full border-2 border-blue-500"
-                                        initial={false}
-                                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                                    />
-                                )}
-                            </button>
-                        ))}
+                    <div className="flex flex-col items-center gap-4 py-4">
+                        <div className={`p-6 rounded-2xl transition-all ${mood ? (darkMode ? 'bg-gradient-to-br from-amber-500/15 to-orange-500/15 border border-amber-500/30' : 'bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200') : ''
+                            }`}>
+                            <StarRating
+                                value={mood || 0}
+                                onChange={setMood}
+                                size={48}
+                            />
+                        </div>
+                        <p className={`text-base font-semibold transition-all ${mood ? (darkMode ? 'text-pink-400' : 'text-pink-600') : (darkMode ? 'text-slate-500' : 'text-slate-400')
+                            }`}>
+                            {mood ? MOODS.find(m => m.value === mood)?.label : 'Rate your experience'}
+                        </p>
                     </div>
 
                     {/* Step 2: Quick Feedback Tags */}
@@ -110,10 +103,10 @@ export default function ReviewModal({ event, onClose, onSubmit, darkMode }) {
                                     key={tag}
                                     onClick={() => handleTagToggle(tag)}
                                     className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-all border ${selectedTags.includes(tag)
-                                            ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20"
-                                            : darkMode
-                                                ? "bg-transparent border-slate-700 text-slate-300 hover:border-slate-500"
-                                                : "bg-transparent border-slate-200 text-slate-600 hover:border-slate-400"
+                                        ? "bg-gradient-to-r from-pink-500 to-purple-500 border-pink-500 text-white shadow-md shadow-pink-500/20"
+                                        : darkMode
+                                            ? "bg-transparent border-slate-700 text-slate-300 hover:border-slate-500"
+                                            : "bg-transparent border-slate-200 text-slate-600 hover:border-slate-400"
                                         }`}
                                 >
                                     {tag}
@@ -147,7 +140,7 @@ export default function ReviewModal({ event, onClose, onSubmit, darkMode }) {
                                             placeholder="Sharing your experience helps others..."
                                             value={publicNote}
                                             onChange={(e) => setPublicNote(e.target.value)}
-                                            className={`w-full min-h-[80px] p-3 rounded-xl resize-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${darkMode ? 'bg-white/5 text-white placeholder:text-slate-600' : 'bg-slate-50 text-slate-900 placeholder:text-slate-400'
+                                            className={`w-full min-h-[80px] p-3 rounded-xl resize-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500/50 ${darkMode ? 'bg-white/5 text-white placeholder:text-slate-600' : 'bg-slate-50 text-slate-900 placeholder:text-slate-400'
                                                 }`}
                                         />
                                     </div>
@@ -160,7 +153,7 @@ export default function ReviewModal({ event, onClose, onSubmit, darkMode }) {
                                             placeholder="Feedback for the organizers..."
                                             value={privateNote}
                                             onChange={(e) => setPrivateNote(e.target.value)}
-                                            className={`w-full min-h-[80px] p-3 rounded-xl resize-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${darkMode ? 'bg-white/5 text-white placeholder:text-slate-600' : 'bg-slate-50 text-slate-900 placeholder:text-slate-400'
+                                            className={`w-full min-h-[80px] p-3 rounded-xl resize-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500/50 ${darkMode ? 'bg-white/5 text-white placeholder:text-slate-600' : 'bg-slate-50 text-slate-900 placeholder:text-slate-400'
                                                 }`}
                                         />
                                     </div>
@@ -182,8 +175,8 @@ export default function ReviewModal({ event, onClose, onSubmit, darkMode }) {
                             onClick={handleSubmit}
                             disabled={!mood || submitting}
                             className={`flex-1 py-3 rounded-xl font-bold text-sm shadow-lg transition-all ${!mood || submitting
-                                    ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
-                                    : "bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:scale-[1.02] shadow-blue-500/25"
+                                ? "bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600"
+                                : "bg-gradient-to-r from-pink-600 to-purple-600 text-white hover:scale-[1.02] shadow-pink-500/25"
                                 }`}
                         >
                             {submitting ? (

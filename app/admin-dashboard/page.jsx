@@ -1310,7 +1310,11 @@ export default function AdminDashboard() {
                         <div className="w-12 h-12 border-4 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     ) : selectedFeedbackEvent && feedbackData ? (
-                      <FeedbackHeatmap data={feedbackData.aggregated} darkMode={darkMode} />
+                      <FeedbackHeatmap
+                        data={feedbackData.aggregated}
+                        startTime={feedbackData.event?.startTime}
+                        darkMode={darkMode}
+                      />
                     ) : (
                       <div className={`p-12 text-center rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
                         <MessageSquare size={64} className={`mx-auto mb-4 ${darkMode ? 'text-slate-700' : 'text-slate-300'}`} />

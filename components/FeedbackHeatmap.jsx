@@ -1,18 +1,31 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Flame, Moon, Lightbulb, Zap, Turtle, ThumbsUp, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Flame, Moon, Lightbulb, Zap, Turtle, ThumbsUp, TrendingUp, TrendingDown, AlertTriangle, Play, Info } from 'lucide-react';
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    Area,
+    AreaChart,
+    ReferenceLine
+} from 'recharts';
 
 const reactions = [
-    { type: 'interesting', icon: Flame, label: 'Interesting', emoji: '🔥', color: 'bg-orange-500' },
-    { type: 'boring', icon: Moon, label: 'Boring', emoji: '😴', color: 'bg-gray-500' },
-    { type: 'confusing', icon: Lightbulb, label: 'Confusing', emoji: '💡', color: 'bg-yellow-500' },
-    { type: 'tooFast', icon: Zap, label: 'Too Fast', emoji: '⚡', color: 'bg-red-500' },
-    { type: 'tooSlow', icon: Turtle, label: 'Too Slow', emoji: '🐢', color: 'bg-blue-500' },
-    { type: 'clear', icon: ThumbsUp, label: 'Clear', emoji: '👍', color: 'bg-green-500' }
+    { type: 'interesting', icon: Flame, label: 'Interesting', emoji: '🔥', color: '#f97316' }, // orange-500
+    { type: 'boring', icon: Moon, label: 'Boring', emoji: '😴', color: '#6b7280' },      // gray-500
+    { type: 'confusing', icon: Lightbulb, label: 'Confusing', emoji: '💡', color: '#eab308' }, // yellow-500
+    { type: 'tooFast', icon: Zap, label: 'Too Fast', emoji: '⚡', color: '#ef4444' },     // red-500
+    { type: 'tooSlow', icon: Turtle, label: 'Too Slow', emoji: '🐢', color: '#3b82f6' },    // blue-500
+    { type: 'clear', icon: ThumbsUp, label: 'Clear', emoji: '👍', color: '#22c55e' }       // green-500
 ];
 
-export default function FeedbackHeatmap({ data, darkMode }) {
+export default function FeedbackHeatmap({ data, startTime, darkMode }) {
     if (!data || !data.timeBuckets || data.timeBuckets.length === 0) {
         return (
             <div className={`p-12 text-center rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
@@ -25,28 +38,72 @@ export default function FeedbackHeatmap({ data, darkMode }) {
 
     const { timeBuckets, insights } = data;
 
-    // Get max count for color intensity calculation
-    const maxCount = Math.max(...timeBuckets.flatMap(bucket =>
-        Object.values(bucket.reactions)
-    ));
-
-    // Calculate color intensity (0-1)
-    const getIntensity = (count) => {
-        if (count === 0) return 0;
-        return Math.min(count / Math.max(maxCount, 10), 1);
+    // Helper to format minutes from start into absolute time
+    const formatTime = (minutesFromStart) => {
+        if (!startTime) return `${minutesFromStart} min`;
+        try {
+            const date = new Date(startTime);
+            date.setMinutes(date.getMinutes() + minutesFromStart);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            return `${minutesFromStart} min`;
+        }
     };
 
-    // Get color with opacity based on count
-    const getCellColor = (reactionType, count) => {
-        const reaction = reactions.find(r => r.type === reactionType);
-        if (!reaction || count === 0) {
-            return darkMode ? 'bg-white/5' : 'bg-slate-100';
+    // Transform data for Recharts
+    const chartData = timeBuckets.map(bucket => {
+        const entry = { name: formatTime(bucket.time) };
+        reactions.forEach(r => {
+            entry[r.label] = bucket.reactions[r.type] || 0;
+        });
+
+        // Calculate Sentiment Score
+        // Positive: Interesting (+1), Clear (+1)
+        // Negative: Boring (-1), Confusing (-1)
+        // Mild Negative: Too Fast (-0.5), Too Slow (-0.5)
+        let score = 0;
+        score += (bucket.reactions['interesting'] || 0) * 1;
+        score += (bucket.reactions['clear'] || 0) * 1;
+        score += (bucket.reactions['boring'] || 0) * -1;
+        score += (bucket.reactions['confusing'] || 0) * -1;
+        score += (bucket.reactions['tooFast'] || 0) * -0.5;
+        score += (bucket.reactions['tooSlow'] || 0) * -0.5;
+
+        entry['Net Sentiment'] = score;
+
+        return entry;
+    });
+
+    // Calculate Summary Statistics
+    const summaryStats = reactions.map(r => {
+        const total = timeBuckets.reduce((acc, bucket) => acc + (bucket.reactions[r.type] || 0), 0);
+        // Average per minute recorded
+        const average = (total / Math.max(timeBuckets.length, 1)).toFixed(2);
+
+        return {
+            ...r,
+            total,
+            average
+        };
+    });
+
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className={`p-4 rounded-xl shadow-xl border ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+                    <p className={`font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{label}</p>
+                    {payload.map((entry, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm mb-1">
+                            <span style={{ color: entry.color }}>●</span>
+                            <span className={darkMode ? 'text-slate-300' : 'text-slate-600'}>
+                                {entry.name}: <span className="font-bold">{Number(entry.value).toFixed(1)}</span>
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            );
         }
-
-        const intensity = getIntensity(count);
-        const opacity = Math.max(0.2, intensity);
-
-        return `${reaction.color}/[${opacity}]`;
+        return null;
     };
 
     return (
@@ -65,7 +122,7 @@ export default function FeedbackHeatmap({ data, darkMode }) {
                             <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>Peak Engagement</h3>
                         </div>
                         <p className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                            {insights.peakEngagement.time} min
+                            {formatTime(insights.peakEngagement.time)}
                         </p>
                         <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                             {insights.peakEngagement.count} 🔥 reactions
@@ -84,7 +141,7 @@ export default function FeedbackHeatmap({ data, darkMode }) {
                             <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>Drop-off Time</h3>
                         </div>
                         <p className={`text-2xl font-bold ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                            {insights.dropOff.time} min
+                            {formatTime(insights.dropOff.time)}
                         </p>
                         <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                             {insights.dropOff.count} 😴 reactions
@@ -103,7 +160,7 @@ export default function FeedbackHeatmap({ data, darkMode }) {
                             <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>Most Confusing</h3>
                         </div>
                         <p className={`text-2xl font-bold ${darkMode ? 'text-yellow-400' : 'text-yellow-600'}`}>
-                            {insights.mostConfusing.time} min
+                            {formatTime(insights.mostConfusing.time)}
                         </p>
                         <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                             {insights.mostConfusing.count} 💡 reactions
@@ -112,89 +169,117 @@ export default function FeedbackHeatmap({ data, darkMode }) {
                 </div>
             )}
 
-            {/* Heatmap */}
-            <div className={`p-6 rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
-                <h3 className={`text-xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                    Feedback Heatmap
-                </h3>
+            {/* Main Chart Container */}
+            <div className={`p-6 rounded-3xl border overflow-hidden ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h3 className={`text-xl font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                            Engagement Trends
+                        </h3>
+                        <div className={`mt-1 text-xs flex flex-wrap gap-x-4 gap-y-1 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                            <span className="font-medium">Net Sentiment Score:</span>
+                            <span><span className="text-green-500 font-bold">+1</span> Interesting/Clear</span>
+                            <span><span className="text-red-500 font-bold">-1</span> Boring/Confusing</span>
+                            <span><span className="text-amber-500 font-bold">-0.5</span> Pace</span>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium border ${darkMode ? 'bg-white/5 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                            DATA: TOTAL
+                        </div>
+                    </div>
+                </div>
 
-                <div className="overflow-x-auto">
-                    <div className="min-w-[800px]">
-                        {/* Header - Time slots */}
-                        <div className="flex mb-2">
-                            <div className="w-32"></div>
-                            {timeBuckets.map((bucket, i) => (
-                                <div key={i} className="flex-1 text-center">
-                                    <span className={`text-xs font-medium ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                        {bucket.time}min
-                                    </span>
-                                </div>
+                <div className="h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={darkMode ? "#334155" : "#e2e8f0"} />
+                            <XAxis
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: darkMode ? '#94a3b8' : '#64748b', fontSize: 12 }}
+                                dy={10}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: darkMode ? '#94a3b8' : '#64748b', fontSize: 12 }}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend
+                                iconType="circle"
+                                wrapperStyle={{ paddingTop: '20px' }}
+                            />
+                            <ReferenceLine y={0} stroke={darkMode ? "#64748b" : "#cbd5e1"} strokeDasharray="3 3" />
+
+                            {/* Sentiment Line - The "Curve" */}
+                            <Line
+                                type="monotone"
+                                dataKey="Net Sentiment"
+                                stroke="#d946ef"
+                                strokeWidth={4}
+                                dot={{ r: 0 }}
+                                activeDot={{ r: 8, strokeWidth: 0 }}
+                                connectNulls
+                            />
+
+                            {/* Individual Reaction Lines (Thinner) */}
+                            {reactions.map((r) => (
+                                <Line
+                                    key={r.type}
+                                    type="monotone"
+                                    dataKey={r.label}
+                                    stroke={r.color}
+                                    strokeWidth={1}
+                                    strokeOpacity={0.6}
+                                    dot={false}
+                                    activeDot={{ r: 4, strokeWidth: 0 }}
+                                />
                             ))}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            {/* Summary Statistics Table */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {summaryStats.map((stat) => (
+                    <div
+                        key={stat.type}
+                        className={`p-5 rounded-2xl border transition-all hover:scale-[1.02] ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}
+                    >
+                        <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg`} style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
+                                    <stat.icon size={20} />
+                                </div>
+                                <div>
+                                    <p className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stat.label}</p>
+                                    <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Event Reaction</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Rows - Each reaction type */}
-                        {reactions.map((reaction) => (
-                            <div key={reaction.type} className="flex items-center mb-2">
-                                {/* Y-axis label */}
-                                <div className="w-32 flex items-center gap-2">
-                                    <span className="text-xl">{reaction.emoji}</span>
-                                    <span className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                        {reaction.label}
-                                    </span>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-500/5">
+                                <div className="flex items-center gap-2">
+                                    <Info size={14} className="opacity-50" />
+                                    <span className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>Total Reactions</span>
                                 </div>
-
-                                {/* Cells */}
-                                {timeBuckets.map((bucket, i) => {
-                                    const count = bucket.reactions[reaction.type] || 0;
-                                    return (
-                                        <div
-                                            key={i}
-                                            className="flex-1 aspect-square mx-1 rounded-lg transition-all hover:scale-110 cursor-pointer relative group"
-                                            style={{
-                                                backgroundColor: count > 0
-                                                    ? `rgba(${reaction.type === 'interesting' ? '249, 115, 22' :
-                                                        reaction.type === 'boring' ? '107, 114, 128' :
-                                                            reaction.type === 'confusing' ? '234, 179, 8' :
-                                                                reaction.type === 'tooFast' ? '239, 68, 68' :
-                                                                    reaction.type === 'tooSlow' ? '59, 130, 246' :
-                                                                        '34, 197, 94'}, ${getIntensity(count)})`
-                                                    : darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-                                            }}
-                                        >
-                                            {count > 0 && (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <span className={`text-xs font-bold ${count > 5 ? 'text-white' : darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                                        {count}
-                                                    </span>
-                                                </div>
-                                            )}
-
-                                            {/* Tooltip */}
-                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                                {count} {reaction.label} at {bucket.time}min
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                <span className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stat.total}</span>
                             </div>
-                        ))}
-                    </div>
-                </div>
 
-                {/* Legend */}
-                <div className="mt-6 flex items-center justify-center gap-4">
-                    <span className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Less</span>
-                    <div className="flex gap-1">
-                        {[0.2, 0.4, 0.6, 0.8, 1].map((opacity, i) => (
-                            <div
-                                key={i}
-                                className="w-6 h-6 rounded"
-                                style={{ backgroundColor: `rgba(249, 115, 22, ${opacity})` }}
-                            ></div>
-                        ))}
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-500/5">
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp size={14} className="opacity-50" />
+                                    <span className={`text-sm font-medium ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>Avg / min</span>
+                                </div>
+                                <span className={`font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stat.average}</span>
+                            </div>
+                        </div>
                     </div>
-                    <span className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>More</span>
-                </div>
+                ))}
             </div>
         </div>
     );

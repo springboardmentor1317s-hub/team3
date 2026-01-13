@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Star, FileText, User, Calendar, MessageSquare } from 'lucide-react';
+import StarRating from './StarRating';
 
 export default function ReviewsView({ darkMode }) {
     const [reviews, setReviews] = useState([]);
@@ -57,9 +58,8 @@ export default function ReviewsView({ darkMode }) {
                     >
                         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
                             <div className="flex items-start gap-4">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${darkMode ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-700'
-                                    }`}>
-                                    {review.rating}⭐
+                                <div className="flex flex-col gap-1">
+                                    <StarRating value={review.rating} readonly size={18} />
                                 </div>
                                 <div>
                                     <h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-slate-900'}`}>

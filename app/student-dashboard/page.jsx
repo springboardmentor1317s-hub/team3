@@ -8,7 +8,7 @@ import {
   Calendar, Bell, Search, Filter, Star, User, LogOut, Settings,
   Home, Ticket, Heart, CheckCircle, Clock, XCircle, MapPin,
   Users, TrendingUp, Eye, Download, X, ChevronLeft, ChevronRight,
-  Moon, Sun, Menu
+  Moon, Sun, Menu, MessageSquare, ArrowRight
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { QRCodeSVG } from "qrcode.react";
@@ -832,69 +832,90 @@ export default function StudentDashboard() {
                     className={`group rounded-3xl overflow-hidden border backdrop-blur-sm transition-all duration-300 ${darkMode ? 'bg-white/5 border-white/10 hover:shadow-2xl hover:shadow-purple-900/20' : 'bg-white border-slate-100 hover:shadow-2xl hover:shadow-slate-200'}`}
                     onClick={() => setSelectedEvent(event)}
                   >
-                    <div className="relative h-56 overflow-hidden">
-                      <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                      <div className="absolute top-4 left-4">
-                        <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold border border-white/20 shadow-lg">
-                          {event.category}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => handleToggleFavorite(e, event._id)}
-                        className={`absolute top-4 right-4 p-2 rounded-full backdrop-blur-md transition-all ${favorites.includes(event._id) ? "bg-white text-pink-500 shadow-lg scale-110" : "bg-black/30 text-white hover:bg-black/50"}`}
-                      >
-                        <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
-                      </button>
-                    </div>
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</h3>
-                        {event.status === 'completed' && (
-                          <span className="ml-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-500 border border-purple-500/30 whitespace-nowrap">
-                            Completed
+                    {/* Card Header: Category & Status */}
+                    <div className="px-5 pt-5 pb-3 flex justify-between items-start">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                        {event.category}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        {/* Status Chips */}
+                        {event.status === 'completed' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center gap-1">
+                            <CheckCircle size={12} /> Completed
                           </span>
+                        ) : getRegistrationStatus(event._id) === 'approved' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border border-green-500/20 flex items-center gap-1">
+                            <CheckCircle size={12} /> Registered
+                          </span>
+                        ) : getRegistrationStatus(event._id) === 'pending' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1">
+                            <Clock size={12} /> Pending
+                          </span>
+                        ) : getRegistrationStatus(event._id) === 'rejected' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-1">
+                            <X size={12} /> Rejected
+                          </span>
+                        ) : isEventLive(event) ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping mr-1"></span> Live
+                          </span>
+                        ) : null}
+
+                        {/* Favorite Button (Moved to header) */}
+                        <button
+                          onClick={(e) => handleToggleFavorite(e, event._id)}
+                          className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                        >
+                          <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
+                      <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+                      {/* Hover Overlay Action */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFeedbackEvent(event);
+                              setShowFeedbackModal(true);
+                            }}
+                            className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
+                          >
+                            <MessageSquare size={18} /> Give Feedback
+                          </button>
+                        ) : (
+                          <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
+                            {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
+                          </button>
                         )}
                       </div>
+                    </div>
 
-                      <div className="space-y-3 mb-6">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Calendar size={16} className="text-pink-500" />
-                          <span>{event.date}</span>
+                    <div className="p-5">
+                      <div className="mb-3">
+                        <div className="flex justify-between items-start">
+                          <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
+                          <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <MapPin size={16} className="text-orange-500" />
-                          <span>{event.location}</span>
-                        </div>
+                        <p className={`text-sm mt-1 line-clamp-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{event.description}</p>
                       </div>
 
-                      {/* Live Feedback Button (only during event) */}
-                      {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFeedbackEvent(event);
-                            setShowFeedbackModal(true);
-                          }}
-                          className="w-full py-3 rounded-xl font-bold transition-all bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg hover:shadow-purple-500/40 hover:scale-[1.02] mb-3"
-                        >
-                          💬 Give Live Feedback
-                        </button>
-                      )}
-
-                      <button className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg ${getRegistrationStatus(event._id) === 'approved'
-                        ? "bg-green-500/20 text-green-500 shadow-green-500/10 cursor-default"
-                        : getRegistrationStatus(event._id) === 'pending'
-                          ? "bg-orange-500/20 text-orange-500 shadow-orange-500/10 cursor-default"
-                          : getRegistrationStatus(event._id) === 'rejected'
-                            ? "bg-red-500/20 text-red-500 shadow-red-500/10 cursor-default"
-                            : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"
-                        }`}>
-                        {getRegistrationStatus(event._id) === 'approved' ? "Registered" :
-                          getRegistrationStatus(event._id) === 'pending' ? "Pending" :
-                            getRegistrationStatus(event._id) === 'rejected' ? "Registration Rejected" :
-                              "View Details"}
-                      </button>
+                      <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                          <Calendar size={14} className="text-pink-500" />
+                          <span>{new Date(event.date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                          <MapPin size={14} className="text-orange-500" />
+                          <span className="truncate max-w-[120px]">{event.location}</span>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -907,32 +928,41 @@ export default function StudentDashboard() {
             <div className={`p-8 rounded-3xl border backdrop-blur-xl ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40'}`}>
               <h2 className={`text-3xl font-bold mb-8 ${darkMode ? 'text-white' : 'text-slate-900'}`}>My Registered Events</h2>
               {myRegistrations.filter(reg => reg.event && reg.event._id).length > 0 ? (
-                <div className="grid gap-4">
+                <div className="flex flex-col gap-4">
                   {myRegistrations.filter(reg => reg.event && reg.event._id).map(reg => (
-                    <div key={reg._id} className={`flex flex-col md:flex-row md:items-center gap-4 md:gap-6 p-4 rounded-2xl border transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-100 hover:bg-slate-50'}`}>
-                      <div className="flex items-center gap-4 w-full md:w-auto">
-                        <img src={reg.event?.image} className="w-16 h-16 md:w-24 md:h-24 rounded-xl object-cover shadow-md" />
+                    <div
+                      key={reg._id}
+                      className={`relative overflow-hidden flex flex-col md:flex-row gap-6 p-6 rounded-2xl border transition-all 
+                        ${darkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-100 shadow-md hover:shadow-lg hover:shadow-slate-200/50'}
+                      `}
+                    >
+                      {/* Side Status Strip */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 
+                        ${reg.status === 'approved' ? 'bg-green-500' :
+                          reg.status === 'rejected' ? 'bg-red-500' :
+                            reg.event?.status === 'completed' ? 'bg-purple-500' : 'bg-amber-500'}`}
+                      />
+
+                      <div className="flex items-center gap-5 w-full md:w-auto pl-4">
+                        <img src={reg.event?.image} className="w-20 h-20 md:w-28 md:h-28 rounded-xl object-cover shadow-sm bg-slate-800" alt={reg.event?.title} />
                         <div>
-                          <h3 className={`text-lg md:text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.event?.title}</h3>
-                          <div className="flex items-center gap-3 mt-1 md:mt-2">
-                            <span className={`px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider ${reg.status === 'approved' ? 'bg-green-500/20 text-green-500' :
-                              reg.status === 'rejected' ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'
-                              }`}>
-                              {reg.status}
-                            </span>
-                            {/* Event Status Badge */}
-                            {reg.event?.status === 'completed' && (
-                              <span className="px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-500">
-                                Event Completed
-                              </span>
-                            )}
+                          <h3 className={`text-xl md:text-2xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.event?.title}</h3>
+
+                          <div className={`flex flex-col gap-1 text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <div className="flex items-center gap-2">
+                              <Calendar size={14} className="text-pink-500" />
+                              <span>{new Date(reg.event?.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin size={14} className="text-orange-500" />
+                              <span>{reg.event?.location}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
 
-
                       {reg.status !== 'cancelled' && reg.status !== 'rejected' && (
-                        <div className="w-full md:w-auto md:ml-auto flex gap-2">
+                        <div className="w-full md:w-auto md:ml-auto flex items-center gap-2 pl-4 md:pl-0 mt-2 md:mt-0">
                           {/* Rate Event Button (for completed events) */}
                           {reg.event?.status === 'completed' && !userReviews[reg.event._id] && (
                             <button
@@ -941,27 +971,29 @@ export default function StudentDashboard() {
                                 setReviewEvent(reg.event);
                                 setShowReviewModal(true);
                               }}
-                              className="px-4 py-2 rounded-xl font-bold text-sm bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 shadow-lg"
+                              className="p-2.5 rounded-full bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all shadow-sm group-hover:scale-110"
+                              title="Rate Event"
                             >
-                              ⭐ Rate Event
+                              <Star size={18} fill="currentColor" />
                             </button>
                           )}
 
                           {reg.status === 'approved' && (
                             <button
                               onClick={() => setSelectedTicket(reg)}
-                              className={`px-4 py-2 rounded-xl font-bold text-sm ${darkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
+                              className={`p-2.5 rounded-full border transition-all group-hover:scale-110 ${darkMode ? "border-white/20 hover:bg-white/10 text-slate-300 hover:text-white" : "border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-900"}`}
+                              title="View Ticket"
                             >
-                              View Ticket
+                              <Ticket size={18} />
                             </button>
                           )}
 
                           <button
                             onClick={() => handleCancelRegistration(reg)}
-                            className={`px-4 py-2 rounded-xl font-bold text-sm bg-red-500/10 text-red-500 hover:bg-red-500/20 shadow-sm`}
-                            title="Cancel Registration (Allowed until 2 days before event)"
+                            className="p-2.5 rounded-full text-red-500 hover:bg-red-500/10 transition-all group-hover:scale-110"
+                            title="Cancel Registration"
                           >
-                            Cancel
+                            <X size={18} />
                           </button>
                         </div>
                       )}
@@ -1093,23 +1125,72 @@ export default function StudentDashboard() {
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {recommendedEvents.map((event, i) => (
                       <motion.div key={event._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} whileHover={{ y: -10 }} className={`group rounded-3xl overflow-hidden border-2 backdrop-blur-sm transition-all duration-300 ${event.matchPercentage >= 75 ? 'border-green-500/50 shadow-lg shadow-green-500/20' : 'border-pink-500/30 shadow-lg shadow-pink-500/10'} ${darkMode ? 'bg-white/5 hover:shadow-2xl hover:shadow-purple-900/20' : 'bg-white hover:shadow-2xl hover:shadow-slate-200'}`} onClick={() => setSelectedEvent(event)}>
-                        <div className="relative h-56 overflow-hidden">
-                          <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                          <div className="absolute top-4 left-4"><div className={`px-3 py-1.5 rounded-full text-white text-xs font-bold border shadow-lg backdrop-blur-md ${event.matchPercentage >= 75 ? 'bg-green-500/80 border-green-400/50' : 'bg-pink-500/80 border-pink-400/50'}`}>{event.matchPercentage}% Match</div></div>
-                          <div className="absolute top-4 right-4"><span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold border border-white/20 shadow-lg">{event.category}</span></div>
-                          <button onClick={(e) => handleToggleFavorite(e, event._id)} className={`absolute bottom-4 right-4 p-2 rounded-full backdrop-blur-md transition-all ${favorites.includes(event._id) ? "bg-white text-pink-500 shadow-lg scale-110" : "bg-black/30 text-white hover:bg-black/50"}`}><Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} /></button>
-                        </div>
-                        <div className="p-6">
-                          <h3 className={`text-xl font-bold line-clamp-1 mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</h3>
-                          <div className="space-y-3 mb-6">
-                            <div className="flex items-center gap-2 text-sm text-slate-500"><Calendar size={16} className="text-pink-500" /><span>{event.date}</span></div>
-                            {(event.startTime || event.time) && (
-                              <div className="flex items-center gap-2 text-sm text-slate-500"><Clock size={16} className="text-blue-500" /><span>{event.startTime}{event.endTime ? ` - ${event.endTime}` : ''} {(!event.startTime && event.time) ? event.time : ''}</span></div>
-                            )}
-                            <div className="flex items-center gap-2 text-sm text-slate-500"><MapPin size={16} className="text-orange-500" /><span>{event.location}</span></div>
+                        {/* Card Header: Category & Status */}
+                        <div className="px-5 pt-5 pb-3 flex justify-between items-start">
+                          <div className="flex gap-2">
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                              {event.category}
+                            </span>
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-md flex items-center gap-1 ${event.matchPercentage >= 75 ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-pink-500/10 border-pink-500/20 text-pink-500'}`}>
+                              {event.matchPercentage}% Match
+                            </span>
                           </div>
-                          <button disabled={event.status === 'completed' || getRegistrationStatus(event._id) === 'approved' || getRegistrationStatus(event._id) === 'pending' || getRegistrationStatus(event._id) === 'rejected'} className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg ${event.status === 'completed' ? "bg-slate-500/20 text-slate-500 shadow-slate-500/10 cursor-not-allowed border border-slate-500/20" : getRegistrationStatus(event._id) === 'approved' ? "bg-green-500/20 text-green-500 shadow-green-500/10 cursor-default" : getRegistrationStatus(event._id) === 'pending' ? "bg-orange-500/20 text-orange-500 shadow-orange-500/10 cursor-default" : getRegistrationStatus(event._id) === 'rejected' ? "bg-red-500/20 text-red-500 shadow-red-500/10 cursor-default" : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"}`}>{event.status === 'completed' ? "Event Completed" : getRegistrationStatus(event._id) === 'approved' ? "Registered" : getRegistrationStatus(event._id) === 'pending' ? "Pending" : getRegistrationStatus(event._id) === 'rejected' ? "Registration Rejected" : "View Details"}</button>
+
+                          <div className="flex items-center gap-2">
+                            {/* Favorite Button */}
+                            <button
+                              onClick={(e) => handleToggleFavorite(e, event._id)}
+                              className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                            >
+                              <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
+                          <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+                          {/* Hover Overlay Action */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackEvent(event);
+                                  setShowFeedbackModal(true);
+                                }}
+                                className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
+                              >
+                                <MessageSquare size={18} /> Give Feedback
+                              </button>
+                            ) : (
+                              <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
+                                {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p-5">
+                          <div className="mb-3">
+                            <div className="flex justify-between items-start">
+                              <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
+                              <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                            </div>
+                            <p className={`text-sm mt-1 line-clamp-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{event.description}</p>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                              <Calendar size={14} className="text-pink-500" />
+                              <span>{new Date(event.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                              <MapPin size={14} className="text-orange-500" />
+                              <span className="truncate max-w-[120px]">{event.location}</span>
+                            </div>
+                          </div>
                         </div>
                       </motion.div>
                     ))}
@@ -1209,38 +1290,105 @@ export default function StudentDashboard() {
 
           {currentView === "favorites" && (
             <div className="space-y-6">
-              <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>My Favorites</h2>
-              {events.filter(ev => user.favorites?.includes(ev._id)).length > 0 ? (
+              <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} mb-6`}>My Favorites</h2>
+              {events.filter(ev => favorites.includes(ev._id)).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {events.filter(ev => user.favorites?.includes(ev._id)).map(event => (
-                    <div key={event._id} onClick={() => setSelectedEvent(event)} className={`group relative rounded-2xl overflow-hidden cursor-pointer border ${cardBg} hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-black/5`}>
-                      {/* Reuse event card layout or create simplified one */}
-                      <div className="h-48 relative overflow-hidden">
-                        <img src={event.image || `https://source.unsplash.com/random/800x600?${event.category}`} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90" />
-                        <span className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold text-white ${getCategoryColor(event.category)} backdrop-blur-md shadow-lg`}>
+                  {events.filter(ev => favorites.includes(ev._id)).map(event => (
+                    <div key={event._id} onClick={() => setSelectedEvent(event)} className={`group relative rounded-2xl overflow-hidden cursor-pointer border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-black/5`}>
+                      {/* Card Header: Category & Status */}
+                      <div className="px-5 pt-5 pb-3 flex justify-between items-start">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                           {event.category}
                         </span>
+
+                        <div className="flex items-center gap-2">
+                          {/* Status Chips */}
+                          {event.status === 'completed' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center gap-1">
+                              <CheckCircle size={12} /> Completed
+                            </span>
+                          ) : getRegistrationStatus(event._id) === 'approved' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border border-green-500/20 flex items-center gap-1">
+                              <CheckCircle size={12} /> Registered
+                            </span>
+                          ) : getRegistrationStatus(event._id) === 'pending' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1">
+                              <Clock size={12} /> Pending
+                            </span>
+                          ) : getRegistrationStatus(event._id) === 'rejected' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-1">
+                              <X size={12} /> Rejected
+                            </span>
+                          ) : isEventLive(event) ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping mr-1"></span> Live
+                            </span>
+                          ) : null}
+
+                          {/* Favorite Button (Moved to header) */}
+                          <button
+                            onClick={(e) => handleToggleFavorite(e, event._id)}
+                            className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                          >
+                            <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
+                          </button>
+                        </div>
                       </div>
+
+                      <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
+                        <img src={event.image || `https://source.unsplash.com/random/800x600?${event.category}`} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+                        {/* Hover Overlay Action */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
+                          {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFeedbackEvent(event);
+                                setShowFeedbackModal(true);
+                              }}
+                              className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
+                            >
+                              <MessageSquare size={18} /> Give Feedback
+                            </button>
+                          ) : (
+                            <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
+                              {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="p-5">
-                        <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>{event.title}</h3>
-                        <p className={`text-sm ${textSecondary} mb-4 line-clamp-2`}>{event.description}</p>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className={`flex items-center gap-2 ${textSecondary}`}>
-                            <Calendar size={16} className="text-pink-500" />
-                            {new Date(event.date).toLocaleDateString()}
-                          </span>
-                          <span className={`font-bold ${textPrimary}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                        <div className="mb-3">
+                          <div className="flex justify-between items-start">
+                            <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
+                            <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                          </div>
+                          <p className={`text-sm mt-1 line-clamp-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{event.description}</p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
+                          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <Calendar size={14} className="text-pink-500" />
+                            <span>{new Date(event.date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <MapPin size={14} className="text-orange-500" />
+                            {/* truncate long locations to avoid breaking layout */}
+                            <span className="truncate max-w-[120px]">{event.location}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className={`${cardBg} border rounded-2xl p-12 text-center`}>
+                <div className={`${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} border rounded-2xl p-12 text-center`}>
                   <Heart size={48} className="mx-auto text-pink-500 mb-4" />
-                  <h3 className={`text-2xl font-bold ${textPrimary}`}>No Favorites Yet</h3>
-                  <p className={textSecondary}>Mark events as favorites to see them here.</p>
+                  <h3 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>No Favorites Yet</h3>
+                  <p className={darkMode ? 'text-slate-400' : 'text-slate-500'}>Mark events as favorites to see them here.</p>
                 </div>
               )}
             </div>
@@ -1423,46 +1571,51 @@ export default function StudentDashboard() {
                 <ReviewsSection eventId={selectedEvent._id} darkMode={darkMode} />
               </div>
 
-              <div className="flex items-center gap-4 pt-6 border-t border-white/10">
-                <p className={`text-sm ${textSecondary} mb-1`}>Registration Fee</p>
-                <p className={`text-2xl font-bold ${textPrimary}`}>{selectedEvent.price ? `₹${selectedEvent.price}` : 'Free'}</p>
+              <div className="flex items-center justify-between pt-6 border-t border-white/10 gap-4">
+                <div>
+                  <p className={`text-sm ${textSecondary} mb-1`}>Registration Fee</p>
+                  <p className={`text-2xl font-bold ${textPrimary}`}>{selectedEvent.price ? `₹${selectedEvent.price}` : 'Free'}</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {isEventLive(selectedEvent) && (
+                    <button
+                      onClick={() => {
+                        setFeedbackEvent(selectedEvent);
+                        setShowFeedbackModal(true);
+                      }}
+                      className="py-3 px-5 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/30 hover:scale-105 transition-all flex items-center gap-2"
+                    >
+                      <TrendingUp size={18} /> Give Feedback
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (selectedEvent.status === 'completed') return;
+                      if (!getRegistrationStatus(selectedEvent._id)) {
+                        if (isRegistrationOpen(selectedEvent)) {
+                          handleRegisterClick(selectedEvent);
+                        }
+                      }
+                    }}
+                    disabled={selectedEvent.status === 'completed' || (!isRegistrationOpen(selectedEvent) && !getRegistrationStatus(selectedEvent._id))}
+                    className={`py-3 px-6 rounded-xl font-bold text-lg transition-all shadow-lg ${selectedEvent.status === 'completed' ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
+                      getRegistrationStatus(selectedEvent._id) === 'approved' ? 'bg-green-500/20 text-green-500 cursor-default' :
+                        getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'bg-red-500/20 text-red-500 cursor-default' :
+                          getRegistrationStatus(selectedEvent._id) === 'pending' ? 'bg-yellow-500/20 text-yellow-500 cursor-default' :
+                            !isRegistrationOpen(selectedEvent) ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
+                              'bg-gradient-to-r from-pink-600 to-orange-600 text-white hover:scale-105 shadow-pink-500/20'
+                      }`}
+                  >
+                    {selectedEvent.status === 'completed' ? 'Event Completed' :
+                      getRegistrationStatus(selectedEvent._id) === 'approved' ? 'Registered' :
+                        getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'Rejected' :
+                          getRegistrationStatus(selectedEvent._id) === 'pending' ? 'Pending' :
+                            !isRegistrationOpen(selectedEvent) ? 'Closed' :
+                              'Register Now'}
+                  </button>
+                </div>
               </div>
-              {isEventLive(selectedEvent) && (
-                <button
-                  onClick={() => {
-                    setFeedbackEvent(selectedEvent);
-                    setShowFeedbackModal(true);
-                  }}
-                  className="py-4 px-6 rounded-xl font-bold text-lg bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/30 hover:scale-105 transition-all flex items-center gap-2"
-                >
-                  <TrendingUp size={20} /> Give Feedback
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  if (selectedEvent.status === 'completed') return;
-                  if (!getRegistrationStatus(selectedEvent._id)) {
-                    if (isRegistrationOpen(selectedEvent)) {
-                      handleRegisterClick(selectedEvent);
-                    }
-                  }
-                }}
-                disabled={selectedEvent.status === 'completed' || (!isRegistrationOpen(selectedEvent) && !getRegistrationStatus(selectedEvent._id))}
-                className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${selectedEvent.status === 'completed' ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
-                  getRegistrationStatus(selectedEvent._id) === 'approved' ? 'bg-green-500/20 text-green-500 cursor-default' :
-                    getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'bg-red-500/20 text-red-500 cursor-default' :
-                      getRegistrationStatus(selectedEvent._id) === 'pending' ? 'bg-yellow-500/20 text-yellow-500 cursor-default' :
-                        !isRegistrationOpen(selectedEvent) ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
-                          'bg-gradient-to-r from-pink-600 to-orange-600 text-white hover:scale-105 shadow-lg shadow-pink-500/20'
-                  }`}
-              >
-                {selectedEvent.status === 'completed' ? 'Event Completed' :
-                  getRegistrationStatus(selectedEvent._id) === 'approved' ? 'Registration Approved' :
-                    getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'Registration Rejected' :
-                      getRegistrationStatus(selectedEvent._id) === 'pending' ? 'Approval Pending' :
-                        !isRegistrationOpen(selectedEvent) ? 'Registration Closed' :
-                          'Register Now'}
-              </button>
             </div>
           </div>
         </div>
