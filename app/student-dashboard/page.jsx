@@ -8,7 +8,7 @@ import {
   Calendar, Bell, Search, Filter, Star, User, LogOut, Settings,
   Home, Ticket, Heart, CheckCircle, Clock, XCircle, MapPin,
   Users, TrendingUp, Eye, Download, X, ChevronLeft, ChevronRight,
-  Moon, Sun, Menu, MessageSquare, ArrowRight
+  Moon, Sun, Menu, MessageSquare, ArrowRight, BookOpen, Edit2, Loader, Check
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { QRCodeSVG } from "qrcode.react";
@@ -70,6 +70,11 @@ export default function StudentDashboard() {
   const [reviewEvent, setReviewEvent] = useState(null);
   const [userReviews, setUserReviews] = useState({}); // Track which events user has reviewed
 
+  // AI Recommendations
+  const [recommendedEvents, setRecommendedEvents] = useState([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [recommendationError, setRecommendationError] = useState('');
+
   // Initial Auth Check and Data Fetching
   useEffect(() => {
     const fetchData = async () => {
@@ -117,6 +122,9 @@ export default function StudentDashboard() {
           setMyRegistrations(data.registrations || []);
         }
 
+        // Fetch AI recommendations
+        fetchRecommendations(token);
+
       } catch (error) {
         console.error("Failed to fetch data", error);
       } finally {
@@ -126,6 +134,34 @@ export default function StudentDashboard() {
 
     fetchData();
   }, [router]);
+
+  // Fetch AI recommendations
+  const fetchRecommendations = async (token) => {
+    try {
+      setLoadingRecommendations(true);
+      const res = await fetch('/api/events/recommendations', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendedEvents(data.data || []);
+        setRecommendationError('');
+      } else {
+        const errorData = await res.json();
+        setRecommendationError(errorData.message || 'Failed to load recommendations');
+      }
+    } catch (error) {
+      console.error('Recommendations error:', error);
+      setRecommendationError('Could not load recommendations');
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
 
   // Helper function to check if event is new (created in last 7 days)
   const isNewEvent = (event) => {
@@ -692,7 +728,7 @@ export default function StudentDashboard() {
         <div className="px-6 py-6 space-y-2">
           {[
             { id: 'feed', icon: Home, label: 'Dashboard' },
-            { id: 'foryou', icon: Star, label: 'For You' },
+            { id: 'foryou', icon: Star, label: 'AI Match', badge: recommendedEvents.length > 0 ? recommendedEvents.length : null },
             { id: 'registered', icon: Ticket, label: 'My Events' },
             { id: 'calendar', icon: Calendar, label: 'Calendar' },
             { id: 'favorites', icon: Heart, label: 'Favorites' },
@@ -701,7 +737,7 @@ export default function StudentDashboard() {
             <button
               key={item.id}
               onClick={() => setCurrentView(item.id)}
-              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 text-lg font-medium group ${currentView === item.id
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 text-lg font-medium group relative ${currentView === item.id
                 ? "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/30 scale-[1.02]"
                 : darkMode
                   ? "text-slate-400 hover:bg-white/10 hover:text-white"
@@ -710,6 +746,11 @@ export default function StudentDashboard() {
             >
               <item.icon size={22} className={currentView === item.id ? "animate-pulse" : "group-hover:scale-110 transition-transform"} />
               <span>{item.label}</span>
+              {item.badge && (
+                <span className="ml-auto bg-gradient-to-r from-pink-500 to-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                  {item.badge}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -923,6 +964,153 @@ export default function StudentDashboard() {
             </>
           )}
 
+          {/* AI Recommendations View */}
+          {currentView === "foryou" && (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`relative overflow-hidden rounded-3xl p-10 border shadow-2xl mb-8 ${darkMode ? 'bg-white/5 border-white/10 shadow-black/20' : 'bg-white/60 border-white/40 shadow-slate-200/50'}`}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-r ${darkMode ? 'from-purple-600/20 via-pink-600/20 to-red-600/20' : 'from-purple-400/30 via-pink-400/30 to-red-400/30'} blur-3xl opacity-50`}></div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Star className="w-8 h-8 text-yellow-400 fill-yellow-400" />
+                    <h1 className={`text-4xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                      Events Just For You
+                    </h1>
+                  </div>
+                  <p className={`text-lg ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    AI-powered recommendations based on your interests and skills
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* Profile Completion Warning */}
+              {recommendationError === 'Please complete your profile with interests and skills first' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-blue-500/20 border border-blue-500/50 rounded-2xl p-6 mb-8 backdrop-blur-sm"
+                >
+                  <div className="flex items-start gap-4">
+                    <BookOpen className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-blue-200 mb-2">Complete Your Profile</h3>
+                      <p className="text-blue-100 mb-4">
+                        To get personalized AI recommendations, please complete your profile with your interests and skills.
+                      </p>
+                      <Link
+                        href="/student-profile"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Go to Profile
+                      </Link>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {loadingRecommendations ? (
+                <div className="flex justify-center items-center py-20">
+                  <Loader className="w-12 h-12 text-indigo-500 animate-spin" />
+                </div>
+              ) : recommendedEvents.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {recommendedEvents.map((event, idx) => (
+                      <motion.div
+                        key={event._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        whileHover={{ y: -5 }}
+                        className={`relative group rounded-2xl overflow-hidden border cursor-pointer transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20' : 'bg-white border-slate-200 shadow-lg hover:shadow-xl'}`}
+                        onClick={() => setSelectedEvent(event)}
+                      >
+                        {/* Match Badge */}
+                        <div className="absolute top-4 right-4 z-20 bg-gradient-to-r from-pink-600 to-orange-600 text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-current" />
+                          {event.matchScore}%
+                        </div>
+
+                        {/* Event Image */}
+                        <div className="relative h-48 overflow-hidden">
+                          <img
+                            src={event.image}
+                            alt={event.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          />
+                          <div className={`absolute inset-0 bg-gradient-to-t ${darkMode ? 'from-slate-900 via-transparent to-transparent' : 'from-black/40 via-transparent to-transparent'}`}></div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-4 space-y-3">
+                          <div>
+                            <p className={`text-xs font-semibold mb-1 uppercase tracking-wide ${event.category === 'Technology' ? 'text-blue-400' : event.category === 'Sports' ? 'text-red-400' : 'text-purple-400'}`}>
+                              {event.category}
+                            </p>
+                            <h3 className={`font-bold text-lg leading-tight line-clamp-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                              {event.title}
+                            </h3>
+                          </div>
+
+                          {/* Match Reasons */}
+                          <div className="space-y-1">
+                            {event.matchReasons?.slice(0, 2).map((reason, i) => (
+                              <p key={i} className={`text-xs leading-relaxed flex items-start gap-2 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                <Check className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-400" />
+                                <span>{reason}</span>
+                              </p>
+                            ))}
+                          </div>
+
+                          {/* Event Info */}
+                          <div className={`flex items-center gap-3 text-xs font-medium border-t pt-3 ${darkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+                            <div className="flex items-center gap-1">
+                              <Calendar size={14} className="text-pink-500" />
+                              <span>{new Date(event.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-1 flex-1">
+                              <Users size={14} className="text-orange-500" />
+                              <span className="truncate">{event.registeredCount}/{event.totalSeats} registered</span>
+                            </div>
+                          </div>
+
+                          {/* Register Button */}
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRegisterClick(event);
+                            }}
+                            disabled={event.registeredUsers?.includes(user._id)}
+                            className="w-full mt-2 py-2.5 bg-gradient-to-r from-pink-600 to-orange-600 hover:from-pink-700 hover:to-orange-700 text-white rounded-lg font-semibold transition disabled:opacity-50"
+                          >
+                            {event.registeredUsers?.includes(user._id) ? 'Already Registered' : 'Register Now'}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ) : !recommendationError ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`text-center py-16 rounded-3xl border backdrop-blur-xl ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40'}`}
+                >
+                  <Star className="w-16 h-16 mx-auto mb-4 text-slate-400 opacity-50" />
+                  <p className={`text-lg font-medium ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    No recommendations available yet. Check back soon!
+                  </p>
+                </motion.div>
+              ) : null}
+            </>
+          )}
+
           {/* Other views (Registered, Calendar, etc.) would follow similar styling patterns */}
           {currentView === "registered" && (
             <div className={`p-8 rounded-3xl border backdrop-blur-xl ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40'}`}>
@@ -1121,83 +1309,6 @@ export default function StudentDashboard() {
                     )}
                   </div>
                 </motion.div>
-                {recommendedEvents.length > 0 ? (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {recommendedEvents.map((event, i) => (
-                      <motion.div key={event._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} whileHover={{ y: -10 }} className={`group rounded-3xl overflow-hidden border-2 backdrop-blur-sm transition-all duration-300 ${event.matchPercentage >= 75 ? 'border-green-500/50 shadow-lg shadow-green-500/20' : 'border-pink-500/30 shadow-lg shadow-pink-500/10'} ${darkMode ? 'bg-white/5 hover:shadow-2xl hover:shadow-purple-900/20' : 'bg-white hover:shadow-2xl hover:shadow-slate-200'}`} onClick={() => setSelectedEvent(event)}>
-                        {/* Card Header: Category & Status */}
-                        <div className="px-5 pt-5 pb-3 flex justify-between items-start">
-                          <div className="flex gap-2">
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
-                              {event.category}
-                            </span>
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-md flex items-center gap-1 ${event.matchPercentage >= 75 ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-pink-500/10 border-pink-500/20 text-pink-500'}`}>
-                              {event.matchPercentage}% Match
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {/* Favorite Button */}
-                            <button
-                              onClick={(e) => handleToggleFavorite(e, event._id)}
-                              className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
-                            >
-                              <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
-                          <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
-
-                          {/* Hover Overlay Action */}
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setFeedbackEvent(event);
-                                  setShowFeedbackModal(true);
-                                }}
-                                className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
-                              >
-                                <MessageSquare size={18} /> Give Feedback
-                              </button>
-                            ) : (
-                              <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
-                                {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="p-5">
-                          <div className="mb-3">
-                            <div className="flex justify-between items-start">
-                              <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
-                              <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
-                            </div>
-                            <p className={`text-sm mt-1 line-clamp-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{event.description}</p>
-                          </div>
-
-                          <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
-                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                              <Calendar size={14} className="text-pink-500" />
-                              <span>{new Date(event.date).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-                              <MapPin size={14} className="text-orange-500" />
-                              <span className="truncate max-w-[120px]">{event.location}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className={`p-12 text-center rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-600'}`}><Star size={48} className="mx-auto mb-4 opacity-50" /><p>No recommendations available. Try updating your interests in settings.</p></div>
-                )}
               </div>
             );
           })()}
@@ -1398,11 +1509,49 @@ export default function StudentDashboard() {
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="max-w-3xl"
+              className="max-w-3xl space-y-6"
             >
+              {/* Profile Interests & Skills Card */}
+              <motion.div
+                whileHover={{ y: -5 }}
+                className={`p-8 rounded-3xl border backdrop-blur-xl cursor-pointer transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-indigo-500/50' : 'bg-white/80 border-white/40 shadow-xl hover:shadow-2xl'}`}
+                onClick={() => router.push('/student-profile')}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20">
+                      <BookOpen size={28} className="text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className={`text-xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                        Edit Profile & Interests
+                      </h3>
+                      <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Manage your interests, skills, and bio to get better AI recommendations
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {user?.interests && user.interests.length > 0 && (
+                          <>
+                            <span className="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded-full">
+                              {user.interests.length} interests
+                            </span>
+                          </>
+                        )}
+                        {user?.skills && user.skills.length > 0 && (
+                          <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded-full">
+                            {user.skills.length} skills
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className={`${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+                </div>
+              </motion.div>
+
               <div className={`p-8 rounded-3xl border backdrop-blur-xl ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40 shadow-xl'}`}>
                 <h2 className={`text-3xl font-bold mb-8 bg-gradient-to-r ${darkMode ? 'from-white via-pink-200 to-orange-200' : 'from-slate-900 via-purple-800 to-slate-900'} bg-clip-text text-transparent`}>
-                  Profile Settings
+                  Account Settings
                 </h2>
 
                 <form onSubmit={handleUpdateProfile} className="space-y-6">

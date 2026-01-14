@@ -52,6 +52,15 @@ const UserSchema = new mongoose.Schema(
         ref: 'Event',
       },
     ],
+    skills: [
+      {
+        type: String,
+      },
+    ],
+    profileBio: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );
