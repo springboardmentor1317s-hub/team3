@@ -1,4 +1,4 @@
-'use client';
+'use client'; // Force Rebuild
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -8,10 +8,15 @@ import {
   Calendar, Bell, Search, Filter, Star, User, LogOut, Settings,
   Home, Ticket, Heart, CheckCircle, Clock, XCircle, MapPin,
   Users, TrendingUp, Eye, Download, X, ChevronLeft, ChevronRight,
-  Moon, Sun, Menu
+  Moon, Sun, Menu, MessageSquare, ArrowRight
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { QRCodeSVG } from "qrcode.react";
+import { ToastContainer } from "@/components/Toast";
+import FeedbackModal from "@/components/FeedbackModal";
+import ReviewModal from "@/components/ReviewModal";
+import StarRating from "@/components/StarRating";
+import ReviewsSection from "@/components/ReviewsSection";
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -39,6 +44,31 @@ export default function StudentDashboard() {
   const [memberInput, setMemberInput] = useState("");
   const [selectedTicket, setSelectedTicket] = useState(null); // For QR modal
   const [favorites, setFavorites] = useState([]); // Local state for favorites
+
+  // For You interests editing state
+  const [editingInterests, setEditingInterests] = useState(false);
+  const [selectedInterests, setSelectedInterests] = useState([]);
+
+  // Toast notifications
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = 'success', duration = 3000) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type, duration }]);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
+  // Live feedback
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackEvent, setFeedbackEvent] = useState(null);
+
+  // Review system
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewEvent, setReviewEvent] = useState(null);
+  const [userReviews, setUserReviews] = useState({}); // Track which events user has reviewed
 
   // Initial Auth Check and Data Fetching
   useEffect(() => {
@@ -70,11 +100,15 @@ export default function StudentDashboard() {
         const userData = await userRes.json();
         setUser(userData.user);
         setFavorites(userData.user.favorites || []);
+        setSelectedInterests(userData.user.interests || ['Technology', 'Workshop']);
 
         const eventsRes = await fetch("/api/events");
         if (eventsRes.ok) {
           const data = await eventsRes.json();
           setEvents(data.events || []);
+
+          // Auto-complete past events (IST timezone)
+          fetch("/api/events/auto-complete").catch(err => console.log('Auto-complete:', err));
         }
 
         const regsRes = await fetch(`/api/users/${userData.user._id}/registrations`);
@@ -92,6 +126,52 @@ export default function StudentDashboard() {
 
     fetchData();
   }, [router]);
+
+  // Helper function to check if event is new (created in last 7 days)
+  const isNewEvent = (event) => {
+    if (!event.createdAt) return false;
+    const eventDate = new Date(event.createdAt);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return eventDate > sevenDaysAgo;
+  };
+
+  // Check if registration is open
+  const isRegistrationOpen = (event) => {
+    if (event.status !== 'active') return false;
+
+    const now = new Date();
+
+    // 1. If explicit end date set
+    if (event.registrationEndDate) {
+      const endDate = new Date(event.registrationEndDate);
+      endDate.setHours(23, 59, 59, 999);
+      return now <= endDate;
+    }
+
+    // 2. Fallback: Until Event Start Time
+    if (event.date) {
+      try {
+        const dateTimeStr = `${event.date}T${event.startTime || event.time || '00:00'}`;
+        const eventStart = new Date(dateTimeStr);
+        if (!isNaN(eventStart.getTime())) {
+          return now <= eventStart;
+        }
+        // Fallback if time parsing fails
+        const dayStart = new Date(event.date);
+        return now <= dayStart;
+      } catch (e) {
+        return true; // Fail open
+      }
+    }
+    return true; // No dates = open
+  };
+
+  // Get new events for notifications (sorted newest first)
+  const newEvents = events
+    .filter(event => isNewEvent(event) && event.status === 'active')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 5);
 
   // Handle mobile sidebar on resize.
   useEffect(() => {
@@ -111,8 +191,8 @@ export default function StudentDashboard() {
   }, []);
 
   const handleRegisterClick = (event) => {
-    if (!user) return alert("Please login first");
-    if (event.registeredUsers?.includes(user._id)) return alert("Already registered!");
+    if (!user) return showToast("Please login first", "error");
+    if (event.registeredUsers?.includes(user._id)) return showToast("Already registered!", "info");
 
     setRegistrationEvent(event);
     setTeamName(""); // Reset
@@ -146,7 +226,7 @@ export default function StudentDashboard() {
 
   const addTeamMember = () => {
     if (!memberInput.trim()) return;
-    if (teamMembers.includes(memberInput.trim())) return alert("Member already added");
+    if (teamMembers.includes(memberInput.trim())) return showToast("Member already added", "error");
     setTeamMembers([...teamMembers, memberInput.trim()]);
     setMemberInput("");
   };
@@ -188,16 +268,16 @@ export default function StudentDashboard() {
           event: registrationEvent // Keep full event object for display
         }, ...prev]);
 
-        alert("Registration submitted! Waiting for admin approval.");
+        showToast("Registration submitted! Waiting for admin approval.", "success");
         setShowRegisterModal(false);
         setRegistrationEvent(null);
       } else {
         const data = await res.json();
-        alert(data.error || "Registration failed");
+        showToast(data.error || "Registration failed", "error");
       }
     } catch (e) {
       console.error("Registration failed", e);
-      alert("Registration failed");
+      showToast("Registration failed", "error");
     }
   };
 
@@ -221,10 +301,11 @@ export default function StudentDashboard() {
       if (res.ok) {
         const data = await res.json();
         setUser({ ...user, ...data.user });
-        alert("Profile updated successfully!");
+        showToast("Profile updated successfully!", "success");
         e.target.reset();
       } else {
-        alert("Failed to update profile");
+        const data = await res.json();
+        showToast("Failed to update profile", "error");
       }
     } catch (error) {
       console.error("Update failed", error);
@@ -238,7 +319,7 @@ export default function StudentDashboard() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 2) {
-      return alert("Cannot cancel registration within 2 days of the event.");
+      return showToast("Cannot cancel registration within 2 days of the event.", "error");
     }
 
     if (!confirm("Are you sure you want to cancel your registration?")) return;
@@ -265,18 +346,103 @@ export default function StudentDashboard() {
             : ev
         ));
 
-        alert("Registration cancelled successfully.");
+        showToast("Registration cancelled successfully.", "success");
+        fetchData();
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to cancel registration");
+        showToast(data.error || "Failed to cancel registration", "error");
       }
     } catch (error) {
       console.error("Cancellation failed", error);
-      alert("Failed to cancel registration");
+      showToast("Failed to cancel registration", "error");
     }
   };
 
+  // Check if event is currently live
+  const isEventLive = (event) => {
+    const now = new Date();
+    try {
+      const startTime = event.startTime || event.time || '00:00';
+      const eventStart = new Date(`${event.date}T${startTime}`);
 
+      let eventEnd;
+      if (event.endTime) {
+        eventEnd = new Date(`${event.date}T${event.endTime}`);
+        // Handle overnight events if end < start? (Assuming same day for now)
+        if (eventEnd < eventStart) {
+          eventEnd.setDate(eventEnd.getDate() + 1);
+        }
+      } else {
+        // Default duration 3 hours
+        eventEnd = new Date(eventStart.getTime() + (3 * 60 * 60 * 1000));
+      }
+
+      return now >= eventStart && now <= eventEnd;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Submit feedback
+  const handleSubmitFeedback = async (reactionType) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          eventId: feedbackEvent._id,
+          reactionType
+        })
+      });
+
+      if (res.ok) {
+        showToast('Feedback submitted!', 'success', 2000);
+      } else {
+        showToast('Failed to submit feedback', 'error');
+      }
+    } catch (error) {
+      console.error('Feedback error:', error);
+      showToast('Failed to submit feedback', 'error');
+    }
+  };
+
+  // Submit review
+  const handleSubmitReview = async (rating, comment, privateFeedback) => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('Submitting review for event:', reviewEvent);
+      console.log('Event ID:', reviewEvent._id);
+
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          eventId: reviewEvent._id,
+          rating,
+          comment,
+          privateFeedback
+        })
+      });
+
+      if (res.ok) {
+        showToast('Review submitted successfully!', 'success');
+        setUserReviews(prev => ({ ...prev, [reviewEvent._id]: true }));
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to submit review', 'error');
+      }
+    } catch (error) {
+      console.error('Review error:', error);
+      showToast('Failed to submit review', 'error');
+    }
+  };
 
   const categories = [
     { name: "all", icon: "🎯", label: "All Events" },
@@ -357,6 +523,8 @@ export default function StudentDashboard() {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 relative overflow-hidden ${darkMode ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       {/* Aurora Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
@@ -416,9 +584,97 @@ export default function StudentDashboard() {
             <div className="relative">
               <button onClick={() => setShowNotifications(!showNotifications)} className={`p-2.5 rounded-xl border transition-all relative ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'}`}>
                 <Bell size={20} />
-                {notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+                {(newEvents.length > 0 || myRegistrations.filter(reg => reg.status === 'approved' || reg.status === 'rejected').length > 0) && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                )}
               </button>
-              {/* Notification Dropdown (Optimized) */}
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`absolute right-0 top-14 w-80 rounded-2xl border shadow-2xl z-50 ${darkMode ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}
+                >
+                  <div className="p-4 border-b border-white/10">
+                    <h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-slate-900'}`}>Notifications</h3>
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {/* New Events */}
+                    {newEvents.length > 0 && (
+                      <>
+                        <div className={`px-4 py-2 ${darkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
+                          <p className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>NEW EVENTS</p>
+                        </div>
+                        {newEvents.map((event) => (
+                          <div
+                            key={event._id}
+                            onClick={() => { setSelectedEvent(event); setShowNotifications(false); }}
+                            className={`p-4 border-b cursor-pointer ${darkMode ? 'border-white/10 hover:bg-white/5' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <Star size={20} className="text-yellow-500 mt-1" />
+                              <div className="flex-1">
+                                <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                                  New Event: {event.title}
+                                </p>
+                                <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                  {event.category} • {event.date}
+                                </p>
+                                <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-500'} mt-1`}>
+                                  {new Date(event.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Registration Updates */}
+                    {myRegistrations.filter(reg => reg.status === 'approved' || reg.status === 'rejected').length > 0 && (
+                      <>
+                        <div className={`px-4 py-2 ${darkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
+                          <p className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>REGISTRATION UPDATES</p>
+                        </div>
+                        {myRegistrations
+                          .filter(reg => reg.status === 'approved' || reg.status === 'rejected')
+                          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                          .map((reg) => (
+                            <div key={reg._id} className={`p-4 border-b ${darkMode ? 'border-white/10 hover:bg-white/5' : 'border-slate-100 hover:bg-slate-50'} transition-colors`}>
+                              <div className="flex items-start gap-3">
+                                {reg.status === 'approved' ? (
+                                  <CheckCircle size={20} className="text-green-500 mt-1" />
+                                ) : (
+                                  <XCircle size={20} className="text-red-500 mt-1" />
+                                )}
+                                <div className="flex-1">
+                                  <p className={`font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                                    {reg.status === 'approved' ? 'Registration Approved' : 'Registration Rejected'}
+                                  </p>
+                                  <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                                    {reg.event?.title || 'Event'}
+                                  </p>
+                                  <p className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-500'} mt-1`}>
+                                    {new Date(reg.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </>
+                    )}
+
+                    {/* Empty State */}
+                    {newEvents.length === 0 && myRegistrations.filter(reg => reg.status === 'approved' || reg.status === 'rejected').length === 0 && (
+                      <div className="p-8 text-center">
+                        <Bell size={48} className={`mx-auto mb-3 ${darkMode ? 'text-slate-700' : 'text-slate-300'}`} />
+                        <p className={`${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>No notifications yet</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
             </div>
 
             <button onClick={handleLogout} className={`px-4 py-2.5 rounded-xl font-medium transition-all ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'}`}>
@@ -436,6 +692,7 @@ export default function StudentDashboard() {
         <div className="px-6 py-6 space-y-2">
           {[
             { id: 'feed', icon: Home, label: 'Dashboard' },
+            { id: 'foryou', icon: Star, label: 'For You' },
             { id: 'registered', icon: Ticket, label: 'My Events' },
             { id: 'calendar', icon: Calendar, label: 'Calendar' },
             { id: 'favorites', icon: Heart, label: 'Favorites' },
@@ -575,50 +832,90 @@ export default function StudentDashboard() {
                     className={`group rounded-3xl overflow-hidden border backdrop-blur-sm transition-all duration-300 ${darkMode ? 'bg-white/5 border-white/10 hover:shadow-2xl hover:shadow-purple-900/20' : 'bg-white border-slate-100 hover:shadow-2xl hover:shadow-slate-200'}`}
                     onClick={() => setSelectedEvent(event)}
                   >
-                    <div className="relative h-56 overflow-hidden">
-                      <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                      <div className="absolute top-4 left-4">
-                        <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold border border-white/20 shadow-lg">
-                          {event.category}
-                        </span>
+                    {/* Card Header: Category & Status */}
+                    <div className="px-5 pt-5 pb-3 flex justify-between items-start">
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                        {event.category}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        {/* Status Chips */}
+                        {event.status === 'completed' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center gap-1">
+                            <CheckCircle size={12} /> Completed
+                          </span>
+                        ) : getRegistrationStatus(event._id) === 'approved' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border border-green-500/20 flex items-center gap-1">
+                            <CheckCircle size={12} /> Registered
+                          </span>
+                        ) : getRegistrationStatus(event._id) === 'pending' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1">
+                            <Clock size={12} /> Pending
+                          </span>
+                        ) : getRegistrationStatus(event._id) === 'rejected' ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-1">
+                            <X size={12} /> Rejected
+                          </span>
+                        ) : isEventLive(event) ? (
+                          <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping mr-1"></span> Live
+                          </span>
+                        ) : null}
+
+                        {/* Favorite Button (Moved to header) */}
+                        <button
+                          onClick={(e) => handleToggleFavorite(e, event._id)}
+                          className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                        >
+                          <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
+                        </button>
                       </div>
-                      <button
-                        onClick={(e) => handleToggleFavorite(e, event._id)}
-                        className={`absolute top-4 right-4 p-2 rounded-full backdrop-blur-md transition-all ${favorites.includes(event._id) ? "bg-white text-pink-500 shadow-lg scale-110" : "bg-black/30 text-white hover:bg-black/50"}`}
-                      >
-                        <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
-                      </button>
                     </div>
-                    <div className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{event.title}</h3>
+
+                    <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
+                      <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+                      {/* Hover Overlay Action */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFeedbackEvent(event);
+                              setShowFeedbackModal(true);
+                            }}
+                            className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
+                          >
+                            <MessageSquare size={18} /> Give Feedback
+                          </button>
+                        ) : (
+                          <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
+                            {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-5">
+                      <div className="mb-3">
+                        <div className="flex justify-between items-start">
+                          <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
+                          <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                        </div>
+                        <p className={`text-sm mt-1 line-clamp-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{event.description}</p>
                       </div>
 
-                      <div className="space-y-3 mb-6">
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <Calendar size={16} className="text-pink-500" />
-                          <span>{event.date}</span>
+                      <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                          <Calendar size={14} className="text-pink-500" />
+                          <span>{new Date(event.date).toLocaleDateString()}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <MapPin size={16} className="text-orange-500" />
-                          <span>{event.location}</span>
+                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                          <MapPin size={14} className="text-orange-500" />
+                          <span className="truncate max-w-[120px]">{event.location}</span>
                         </div>
                       </div>
-
-                      <button className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-lg ${getRegistrationStatus(event._id) === 'approved'
-                        ? "bg-green-500/20 text-green-500 shadow-green-500/10 cursor-default"
-                        : getRegistrationStatus(event._id) === 'pending'
-                          ? "bg-orange-500/20 text-orange-500 shadow-orange-500/10 cursor-default"
-                          : getRegistrationStatus(event._id) === 'rejected'
-                            ? "bg-red-500/20 text-red-500 shadow-red-500/10 cursor-default"
-                            : "bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-pink-500/20 hover:shadow-pink-500/40 hover:scale-[1.02]"
-                        }`}>
-                        {getRegistrationStatus(event._id) === 'approved' ? "Registered" :
-                          getRegistrationStatus(event._id) === 'pending' ? "Pending" :
-                            getRegistrationStatus(event._id) === 'rejected' ? "Registration Rejected" :
-                              "View Details"}
-                      </button>
                     </div>
                   </motion.div>
                 ))}
@@ -630,42 +927,73 @@ export default function StudentDashboard() {
           {currentView === "registered" && (
             <div className={`p-8 rounded-3xl border backdrop-blur-xl ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white/80 border-white/40'}`}>
               <h2 className={`text-3xl font-bold mb-8 ${darkMode ? 'text-white' : 'text-slate-900'}`}>My Registered Events</h2>
-              {myRegistrations.length > 0 ? (
-                <div className="grid gap-4">
-                  {myRegistrations.map(reg => (
-                    <div key={reg._id} className={`flex flex-col md:flex-row md:items-center gap-4 md:gap-6 p-4 rounded-2xl border transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-100 hover:bg-slate-50'}`}>
-                      <div className="flex items-center gap-4 w-full md:w-auto">
-                        <img src={reg.event?.image} className="w-16 h-16 md:w-24 md:h-24 rounded-xl object-cover shadow-md" />
+              {myRegistrations.filter(reg => reg.event && reg.event._id).length > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {myRegistrations.filter(reg => reg.event && reg.event._id).map(reg => (
+                    <div
+                      key={reg._id}
+                      className={`relative overflow-hidden flex flex-col md:flex-row gap-6 p-6 rounded-2xl border transition-all 
+                        ${darkMode ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-white border-slate-100 shadow-md hover:shadow-lg hover:shadow-slate-200/50'}
+                      `}
+                    >
+                      {/* Side Status Strip */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-1.5 
+                        ${reg.status === 'approved' ? 'bg-green-500' :
+                          reg.status === 'rejected' ? 'bg-red-500' :
+                            reg.event?.status === 'completed' ? 'bg-purple-500' : 'bg-amber-500'}`}
+                      />
+
+                      <div className="flex items-center gap-5 w-full md:w-auto pl-4">
+                        <img src={reg.event?.image} className="w-20 h-20 md:w-28 md:h-28 rounded-xl object-cover shadow-sm bg-slate-800" alt={reg.event?.title} />
                         <div>
-                          <h3 className={`text-lg md:text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.event?.title}</h3>
-                          <div className="flex items-center gap-3 mt-1 md:mt-2">
-                            <span className={`px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider ${reg.status === 'approved' ? 'bg-green-500/20 text-green-500' :
-                              reg.status === 'rejected' ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'
-                              }`}>
-                              {reg.status}
-                            </span>
+                          <h3 className={`text-xl md:text-2xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{reg.event?.title}</h3>
+
+                          <div className={`flex flex-col gap-1 text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <div className="flex items-center gap-2">
+                              <Calendar size={14} className="text-pink-500" />
+                              <span>{new Date(reg.event?.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MapPin size={14} className="text-orange-500" />
+                              <span>{reg.event?.location}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
 
-
                       {reg.status !== 'cancelled' && reg.status !== 'rejected' && (
-                        <div className="w-full md:w-auto md:ml-auto flex gap-2">
+                        <div className="w-full md:w-auto md:ml-auto flex items-center gap-2 pl-4 md:pl-0 mt-2 md:mt-0">
+                          {/* Rate Event Button (for completed events) */}
+                          {reg.event?.status === 'completed' && !userReviews[reg.event._id] && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReviewEvent(reg.event);
+                                setShowReviewModal(true);
+                              }}
+                              className="p-2.5 rounded-full bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all shadow-sm group-hover:scale-110"
+                              title="Rate Event"
+                            >
+                              <Star size={18} fill="currentColor" />
+                            </button>
+                          )}
+
                           {reg.status === 'approved' && (
                             <button
                               onClick={() => setSelectedTicket(reg)}
-                              className={`px-4 py-2 rounded-xl font-bold text-sm ${darkMode ? "bg-white/10 hover:bg-white/20 text-white" : "bg-slate-100 hover:bg-slate-200 text-slate-700"}`}
+                              className={`p-2.5 rounded-full border transition-all group-hover:scale-110 ${darkMode ? "border-white/20 hover:bg-white/10 text-slate-300 hover:text-white" : "border-slate-200 hover:bg-slate-50 text-slate-500 hover:text-slate-900"}`}
+                              title="View Ticket"
                             >
-                              View Ticket
+                              <Ticket size={18} />
                             </button>
                           )}
 
                           <button
                             onClick={() => handleCancelRegistration(reg)}
-                            className={`px-4 py-2 rounded-xl font-bold text-sm bg-red-500/10 text-red-500 hover:bg-red-500/20 shadow-sm`}
-                            title="Cancel Registration (Allowed until 2 days before event)"
+                            className="p-2.5 rounded-full text-red-500 hover:bg-red-500/10 transition-all group-hover:scale-110"
+                            title="Cancel Registration"
                           >
-                            Cancel
+                            <X size={18} />
                           </button>
                         </div>
                       )}
@@ -680,6 +1008,199 @@ export default function StudentDashboard() {
               )}
             </div>
           )}
+
+          {/* For You View */}
+          {currentView === "foryou" && (() => {
+            const userInterests = user.interests && user.interests.length > 0 ? user.interests : ['Technology', 'Workshop'];
+            const availableCategories = [
+              "Technology", "Sports", "Cultural", "Academic", "Business", "Workshop",
+              "Music", "Arts", "Robotics", "Public Speaking", "Debate", "Photography",
+              "Film Making", "Dance", "Drama/Theatre", "Entrepreneurship", "AI/Machine Learning",
+              "Cybersecurity", "Gaming/Esports", "Environment", "Social Service",
+              "Literature/Writing", "Design/UI-UX"
+            ];
+
+            const handleSaveInterests = async () => {
+              try {
+                const res = await fetch(`/api/users/${user._id}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ interests: selectedInterests })
+                });
+                if (res.ok) {
+                  setUser({ ...user, interests: selectedInterests });
+                  setEditingInterests(false);
+                  showToast('Interests updated successfully!', 'success');
+                } else {
+                  showToast('Failed to update interests', 'error');
+                }
+              } catch (error) {
+                console.error('Update failed', error);
+                showToast('Failed to update interests', 'error');
+              }
+            };
+
+            const toggleInterest = (category) => {
+              setSelectedInterests(prev =>
+                prev.includes(category)
+                  ? prev.filter(c => c !== category)
+                  : [...prev, category]
+              );
+            };
+
+            const getMatchPercentage = (event) => {
+              if (!userInterests || userInterests.length === 0) return 0;
+
+              // Normalize for case-insensitive comparison
+              const normalizedUserInterests = userInterests.map(i => i.toLowerCase());
+              const eventTags = (event.tags || []).map(t => t.toLowerCase());
+              const category = (event.category || '').toLowerCase();
+
+              // Check for matches
+              const matchingInterests = normalizedUserInterests.filter(interest =>
+                eventTags.includes(interest) || // Match against tags
+                category === interest ||        // Match against category
+                event.title.toLowerCase().includes(interest) || // Fallback: title
+                event.description.toLowerCase().includes(interest) // Fallback: description
+              );
+
+              // Calculate percentage based on how many USER interests are covered
+              const percentage = (matchingInterests.length / normalizedUserInterests.length) * 100;
+
+              return Math.min(100, Math.round(percentage));
+            };
+            const recommendedEvents = events.map(event => ({ ...event, matchPercentage: getMatchPercentage(event) })).filter(event => event.matchPercentage > 0 && event.status === 'active').sort((a, b) => b.matchPercentage - a.matchPercentage);
+            return (
+              <div>
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`relative overflow-hidden rounded-3xl p-10 border shadow-2xl mb-8 ${darkMode ? 'bg-white/5 border-white/10 shadow-black/20' : 'bg-white/60 border-white/40 shadow-slate-200/50'}`}>
+                  <div className={`absolute inset-0 bg-gradient-to-r ${darkMode ? 'from-pink-600/20 via-purple-600/20 to-orange-600/20' : 'from-pink-400/30 via-purple-400/30 to-orange-400/30'} blur-3xl opacity-50`}></div>
+                  <div className="relative z-10">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${darkMode ? 'from-white via-pink-200 to-orange-200' : 'from-slate-900 via-purple-800 to-slate-900'} bg-clip-text text-transparent mb-4 tracking-tight`}>✨ Recommended For You</h1>
+                        <p className={`text-lg md:text-xl ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>Based on your interests: {userInterests.join(', ')}</p>
+                      </div>
+                      <button
+                        onClick={() => setEditingInterests(!editingInterests)}
+                        className={`px-4 py-2 rounded-xl font-bold transition-all ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'}`}
+                      >
+                        {editingInterests ? 'Cancel' : 'Edit Interests'}
+                      </button>
+                    </div>
+
+                    {editingInterests && (
+                      <div className={`mt-6 p-6 rounded-2xl ${darkMode ? 'bg-white/5 border border-white/10' : 'bg-white/80 border border-slate-200'}`}>
+                        <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Select Your Interests</h3>
+                        <div className="flex flex-wrap gap-3 mb-4">
+                          {availableCategories.map(category => (
+                            <button
+                              key={category}
+                              onClick={() => toggleInterest(category)}
+                              className={`px-4 py-2 rounded-xl font-semibold transition-all ${selectedInterests.includes(category)
+                                ? 'bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/30'
+                                : darkMode
+                                  ? 'bg-white/10 text-slate-300 hover:bg-white/20'
+                                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                }`}
+                            >
+                              {category}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={handleSaveInterests}
+                          disabled={selectedInterests.length === 0}
+                          className={`px-6 py-3 rounded-xl font-bold transition-all ${selectedInterests.length === 0
+                            ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-lg hover:shadow-green-500/30'
+                            }`}
+                        >
+                          Save Interests
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+                {recommendedEvents.length > 0 ? (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {recommendedEvents.map((event, i) => (
+                      <motion.div key={event._id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} whileHover={{ y: -10 }} className={`group rounded-3xl overflow-hidden border-2 backdrop-blur-sm transition-all duration-300 ${event.matchPercentage >= 75 ? 'border-green-500/50 shadow-lg shadow-green-500/20' : 'border-pink-500/30 shadow-lg shadow-pink-500/10'} ${darkMode ? 'bg-white/5 hover:shadow-2xl hover:shadow-purple-900/20' : 'bg-white hover:shadow-2xl hover:shadow-slate-200'}`} onClick={() => setSelectedEvent(event)}>
+                        {/* Card Header: Category & Status */}
+                        <div className="px-5 pt-5 pb-3 flex justify-between items-start">
+                          <div className="flex gap-2">
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
+                              {event.category}
+                            </span>
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-md flex items-center gap-1 ${event.matchPercentage >= 75 ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-pink-500/10 border-pink-500/20 text-pink-500'}`}>
+                              {event.matchPercentage}% Match
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Favorite Button */}
+                            <button
+                              onClick={(e) => handleToggleFavorite(e, event._id)}
+                              className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                            >
+                              <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
+                          <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+                          {/* Hover Overlay Action */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackEvent(event);
+                                  setShowFeedbackModal(true);
+                                }}
+                                className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
+                              >
+                                <MessageSquare size={18} /> Give Feedback
+                              </button>
+                            ) : (
+                              <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
+                                {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p-5">
+                          <div className="mb-3">
+                            <div className="flex justify-between items-start">
+                              <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
+                              <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                            </div>
+                            <p className={`text-sm mt-1 line-clamp-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{event.description}</p>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                              <Calendar size={14} className="text-pink-500" />
+                              <span>{new Date(event.date).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                              <MapPin size={14} className="text-orange-500" />
+                              <span className="truncate max-w-[120px]">{event.location}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`p-12 text-center rounded-3xl border ${darkMode ? 'bg-white/5 border-white/10 text-slate-400' : 'bg-white border-slate-200 text-slate-600'}`}><Star size={48} className="mx-auto mb-4 opacity-50" /><p>No recommendations available. Try updating your interests in settings.</p></div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Minimal Placeholder for other views to keep code short for now */}
           {currentView === "calendar" && (
@@ -769,38 +1290,105 @@ export default function StudentDashboard() {
 
           {currentView === "favorites" && (
             <div className="space-y-6">
-              <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>My Favorites</h2>
-              {events.filter(ev => user.favorites?.includes(ev._id)).length > 0 ? (
+              <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'} mb-6`}>My Favorites</h2>
+              {events.filter(ev => favorites.includes(ev._id)).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {events.filter(ev => user.favorites?.includes(ev._id)).map(event => (
-                    <div key={event._id} onClick={() => setSelectedEvent(event)} className={`group relative rounded-2xl overflow-hidden cursor-pointer border ${cardBg} hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-black/5`}>
-                      {/* Reuse event card layout or create simplified one */}
-                      <div className="h-48 relative overflow-hidden">
-                        <img src={event.image || `https://source.unsplash.com/random/800x600?${event.category}`} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90" />
-                        <span className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold text-white ${getCategoryColor(event.category)} backdrop-blur-md shadow-lg`}>
+                  {events.filter(ev => favorites.includes(ev._id)).map(event => (
+                    <div key={event._id} onClick={() => setSelectedEvent(event)} className={`group relative rounded-2xl overflow-hidden cursor-pointer border ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-black/5`}>
+                      {/* Card Header: Category & Status */}
+                      <div className="px-5 pt-5 pb-3 flex justify-between items-start">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                           {event.category}
                         </span>
+
+                        <div className="flex items-center gap-2">
+                          {/* Status Chips */}
+                          {event.status === 'completed' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center gap-1">
+                              <CheckCircle size={12} /> Completed
+                            </span>
+                          ) : getRegistrationStatus(event._id) === 'approved' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border border-green-500/20 flex items-center gap-1">
+                              <CheckCircle size={12} /> Registered
+                            </span>
+                          ) : getRegistrationStatus(event._id) === 'pending' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1">
+                              <Clock size={12} /> Pending
+                            </span>
+                          ) : getRegistrationStatus(event._id) === 'rejected' ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 flex items-center gap-1">
+                              <X size={12} /> Rejected
+                            </span>
+                          ) : isEventLive(event) ? (
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 animate-pulse flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping mr-1"></span> Live
+                            </span>
+                          ) : null}
+
+                          {/* Favorite Button (Moved to header) */}
+                          <button
+                            onClick={(e) => handleToggleFavorite(e, event._id)}
+                            className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                          >
+                            <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
+                          </button>
+                        </div>
                       </div>
+
+                      <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
+                        <img src={event.image || `https://source.unsplash.com/random/800x600?${event.category}`} alt={event.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+                        {/* Hover Overlay Action */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
+                          {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFeedbackEvent(event);
+                                setShowFeedbackModal(true);
+                              }}
+                              className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
+                            >
+                              <MessageSquare size={18} /> Give Feedback
+                            </button>
+                          ) : (
+                            <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
+                              {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="p-5">
-                        <h3 className={`text-xl font-bold mb-2 ${textPrimary}`}>{event.title}</h3>
-                        <p className={`text-sm ${textSecondary} mb-4 line-clamp-2`}>{event.description}</p>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className={`flex items-center gap-2 ${textSecondary}`}>
-                            <Calendar size={16} className="text-pink-500" />
-                            {new Date(event.date).toLocaleDateString()}
-                          </span>
-                          <span className={`font-bold ${textPrimary}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                        <div className="mb-3">
+                          <div className="flex justify-between items-start">
+                            <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
+                            <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                          </div>
+                          <p className={`text-sm mt-1 line-clamp-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{event.description}</p>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
+                          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <Calendar size={14} className="text-pink-500" />
+                            <span>{new Date(event.date).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                            <MapPin size={14} className="text-orange-500" />
+                            {/* truncate long locations to avoid breaking layout */}
+                            <span className="truncate max-w-[120px]">{event.location}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className={`${cardBg} border rounded-2xl p-12 text-center`}>
+                <div className={`${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} border rounded-2xl p-12 text-center`}>
                   <Heart size={48} className="mx-auto text-pink-500 mb-4" />
-                  <h3 className={`text-2xl font-bold ${textPrimary}`}>No Favorites Yet</h3>
-                  <p className={textSecondary}>Mark events as favorites to see them here.</p>
+                  <h3 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>No Favorites Yet</h3>
+                  <p className={darkMode ? 'text-slate-400' : 'text-slate-500'}>Mark events as favorites to see them here.</p>
                 </div>
               )}
             </div>
@@ -937,7 +1525,7 @@ export default function StudentDashboard() {
                     <span className="font-semibold">Date & Time</span>
                   </div>
                   <p className={textPrimary}>{new Date(selectedEvent.date).toLocaleDateString()}</p>
-                  <p className={`text-sm ${textSecondary}`}>{selectedEvent.time || "10:00 AM"}</p>
+                  <p className={`text-sm ${textSecondary}`}>{selectedEvent.startTime || selectedEvent.time ? `${selectedEvent.startTime || ''}${selectedEvent.endTime ? ' - ' + selectedEvent.endTime : ''} ${(!selectedEvent.startTime && selectedEvent.time) ? selectedEvent.time : ''}` : "Time N/A"}</p>
                 </div>
                 <div className={`p-4 rounded-2xl ${darkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <div className="flex items-center gap-3 mb-2 text-blue-400">
@@ -978,30 +1566,60 @@ export default function StudentDashboard() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-4 pt-6 border-t border-white/10">
-                <div className="flex-1">
+              {/* Reviews Section */}
+              <div className="mb-6">
+                <ReviewsSection eventId={selectedEvent._id} darkMode={darkMode} />
+              </div>
+
+              <div className="flex items-center justify-between pt-6 border-t border-white/10 gap-4">
+                <div>
                   <p className={`text-sm ${textSecondary} mb-1`}>Registration Fee</p>
                   <p className={`text-2xl font-bold ${textPrimary}`}>{selectedEvent.price ? `₹${selectedEvent.price}` : 'Free'}</p>
                 </div>
-                <button
-                  onClick={() => { if (!getRegistrationStatus(selectedEvent._id)) handleRegisterClick(selectedEvent); }}
-                  className={`flex-1 py-4 rounded-xl font-bold text-lg transition-all ${getRegistrationStatus(selectedEvent._id) === 'approved' ? 'bg-green-500/20 text-green-500 cursor-default' :
-                    getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'bg-red-500/20 text-red-500 cursor-default' :
-                      getRegistrationStatus(selectedEvent._id) === 'pending' ? 'bg-yellow-500/20 text-yellow-500 cursor-default' :
-                        'bg-gradient-to-r from-pink-600 to-orange-600 text-white hover:scale-105 shadow-lg shadow-pink-500/20'
-                    }`}
-                >
-                  {getRegistrationStatus(selectedEvent._id) === 'approved' ? 'Registration Approved' :
-                    getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'Registration Rejected' :
-                      getRegistrationStatus(selectedEvent._id) === 'pending' ? 'Approval Pending' :
-                        'Register Now'}
-                </button>
+
+                <div className="flex items-center gap-3">
+                  {isEventLive(selectedEvent) && (
+                    <button
+                      onClick={() => {
+                        setFeedbackEvent(selectedEvent);
+                        setShowFeedbackModal(true);
+                      }}
+                      className="py-3 px-5 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/30 hover:scale-105 transition-all flex items-center gap-2"
+                    >
+                      <TrendingUp size={18} /> Give Feedback
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (selectedEvent.status === 'completed') return;
+                      if (!getRegistrationStatus(selectedEvent._id)) {
+                        if (isRegistrationOpen(selectedEvent)) {
+                          handleRegisterClick(selectedEvent);
+                        }
+                      }
+                    }}
+                    disabled={selectedEvent.status === 'completed' || (!isRegistrationOpen(selectedEvent) && !getRegistrationStatus(selectedEvent._id))}
+                    className={`py-3 px-6 rounded-xl font-bold text-lg transition-all shadow-lg ${selectedEvent.status === 'completed' ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
+                      getRegistrationStatus(selectedEvent._id) === 'approved' ? 'bg-green-500/20 text-green-500 cursor-default' :
+                        getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'bg-red-500/20 text-red-500 cursor-default' :
+                          getRegistrationStatus(selectedEvent._id) === 'pending' ? 'bg-yellow-500/20 text-yellow-500 cursor-default' :
+                            !isRegistrationOpen(selectedEvent) ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed border border-slate-500/20' :
+                              'bg-gradient-to-r from-pink-600 to-orange-600 text-white hover:scale-105 shadow-pink-500/20'
+                      }`}
+                  >
+                    {selectedEvent.status === 'completed' ? 'Event Completed' :
+                      getRegistrationStatus(selectedEvent._id) === 'approved' ? 'Registered' :
+                        getRegistrationStatus(selectedEvent._id) === 'rejected' ? 'Rejected' :
+                          getRegistrationStatus(selectedEvent._id) === 'pending' ? 'Pending' :
+                            !isRegistrationOpen(selectedEvent) ? 'Closed' :
+                              'Register Now'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      )
-      }
+      )}
 
 
       {
@@ -1015,8 +1633,14 @@ export default function StudentDashboard() {
 
               <div className="space-y-4 mb-8">
                 <div className={`p-4 rounded-xl ${darkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
-                  <p className={`text-sm ${textSecondary} mb-1`}>Event Date</p>
+                  <p className={`text-sm ${textSecondary} mb-1`}>Event Date & Time</p>
                   <p className={`font-semibold ${textPrimary}`}>{new Date(registrationEvent.date).toLocaleDateString()}</p>
+                  {registrationEvent.startTime && (
+                    <p className={`text-sm mt-1 ${textPrimary}`}>
+                      {registrationEvent.startTime}
+                      {registrationEvent.endTime ? ` - ${registrationEvent.endTime}` : ''}
+                    </p>
+                  )}
                 </div>
                 <div className={`p-4 rounded-xl ${darkMode ? 'bg-white/5' : 'bg-gray-100'}`}>
                   <p className={`text-sm ${textSecondary} mb-1`}>Venue</p>
@@ -1099,7 +1723,7 @@ export default function StudentDashboard() {
               <div className="h-40 bg-gradient-to-br from-pink-600 to-orange-600 relative p-6 flex flex-col justify-end">
                 <h3 className="text-white font-bold text-2xl leading-none">{selectedTicket.event?.title || "Event Details Unavailable"}</h3>
                 <p className="text-white/80 text-sm mt-1">
-                  {selectedTicket.event?.date ? new Date(selectedTicket.event.date).toLocaleDateString() : "Date N/A"} • {selectedTicket.event?.time || "Time N/A"}
+                  {selectedTicket.event?.date ? new Date(selectedTicket.event.date).toLocaleDateString() : "Date N/A"} • {selectedTicket.event?.startTime || selectedTicket.event?.time ? `${selectedTicket.event?.startTime || ''}${selectedTicket.event?.endTime ? ' - ' + selectedTicket.event?.endTime : ''} ${(!selectedTicket.event?.startTime && selectedTicket.event?.time) ? selectedTicket.event?.time : ''}` : "Time N/A"}
                 </p>
                 <div className="absolute -bottom-6 right-6 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg">
                   <Logo size={24} />
@@ -1130,6 +1754,36 @@ export default function StudentDashboard() {
               <div className="h-4 bg-gradient-to-r from-pink-500 to-orange-500"></div>
             </motion.div>
           </div>
+        )
+      }
+
+      {/* Feedback Modal */}
+      {
+        showFeedbackModal && feedbackEvent && (
+          <FeedbackModal
+            event={feedbackEvent}
+            onClose={() => {
+              setShowFeedbackModal(false);
+              setFeedbackEvent(null);
+            }}
+            onSubmit={handleSubmitFeedback}
+            darkMode={darkMode}
+          />
+        )
+      }
+
+      {/* Review Modal */}
+      {
+        showReviewModal && reviewEvent && (
+          <ReviewModal
+            event={reviewEvent}
+            onClose={() => {
+              setShowReviewModal(false);
+              setReviewEvent(null);
+            }}
+            onSubmit={handleSubmitReview}
+            darkMode={darkMode}
+          />
         )
       }
 

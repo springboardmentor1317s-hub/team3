@@ -27,13 +27,26 @@ export async function GET(request) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
         }
 
-        // Find events created by this admin
-        const myEvents = await Event.find({ createdBy: userId }).select('_id');
+        // Find user details to handle multiple IDs with same email
+        const currentUser = await User.findById(userId);
+        let myUserIds = [userId];
+
+        if (currentUser && currentUser.email) {
+            const usersWithSameEmail = await User.find({ email: currentUser.email }).select('_id');
+            myUserIds = usersWithSameEmail.map(u => u._id);
+        }
+
+        // Find events created by this admin (or aliases)
+        const myEvents = await Event.find({ createdBy: { $in: myUserIds } }).select('_id');
         const myEventIds = myEvents.map(e => e._id);
 
         // Fetch registrations only for these events
         const registrations = await Registration.find({ event: { $in: myEventIds } })
-            .populate('event', 'title date')
+            .populate({
+                path: 'event',
+                select: 'title date createdBy', // Fetch createdBy to allow frontend filtering if needed
+                populate: { path: 'createdBy', select: 'email' } // Deep populate to support frontend email check
+            })
             .populate('user', 'fullName email')
             .sort({ createdAt: -1 });
 

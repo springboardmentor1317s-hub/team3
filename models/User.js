@@ -41,6 +41,11 @@ const UserSchema = new mongoose.Schema(
         ref: 'Event',
       },
     ],
+    interests: [
+      {
+        type: String,
+      },
+    ],
     favorites: [
       {
         type: mongoose.Schema.Types.ObjectId,

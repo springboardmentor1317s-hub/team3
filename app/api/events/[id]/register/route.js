@@ -43,6 +43,36 @@ export async function POST(request, { params }) {
       );
     }
 
+    if (event.registrationEndDate) {
+      const now = new Date();
+      const endDate = new Date(event.registrationEndDate);
+      // Set to end of day
+      endDate.setHours(23, 59, 59, 999);
+      if (now > endDate) {
+        return NextResponse.json(
+          { error: 'Registration is closed for this event' },
+          { status: 400 }
+        );
+      }
+    } else if (event.date) {
+      // Default: Close at event start time
+      try {
+        const now = new Date();
+        const dateTimeStr = `${event.date}T${event.startTime || event.time || '00:00'}`;
+        const eventStart = new Date(dateTimeStr);
+        if (!isNaN(eventStart.getTime()) && now > eventStart) {
+          return NextResponse.json(
+            { error: 'Registration is closed (Event has started)' },
+            { status: 400 }
+          );
+        }
+      } catch (e) {
+        // ignore date parsing error, keep open
+      }
+    }
+
+
+
     // register user
     event.registeredUsers.push(userId);
     event.registeredCount += 1;
