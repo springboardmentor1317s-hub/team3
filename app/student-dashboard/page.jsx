@@ -493,6 +493,45 @@ export default function StudentDashboard() {
     { name: "Business", icon: "💼", label: "Business" }
   ];
 
+  const availableCategories = [
+    "Technology", "Sports", "Cultural", "Academic", "Business", "Workshop",
+    "Music", "Arts", "Robotics", "Public Speaking", "Debate", "Photography",
+    "Film Making", "Dance", "Drama/Theatre", "Entrepreneurship", "AI/Machine Learning",
+    "Cybersecurity", "Gaming/Esports", "Environment", "Social Service",
+    "Literature/Writing", "Design/UI-UX"
+  ];
+
+  const handleSaveInterests = async () => {
+    try {
+      const res = await fetch(`/api/users/${user._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interests: selectedInterests })
+      });
+      if (res.ok) {
+        setUser({ ...user, interests: selectedInterests });
+        setEditingInterests(false);
+        showToast('Interests updated successfully!', 'success');
+        // Refresh recommendations
+        const token = localStorage.getItem("token");
+        if (token) fetchRecommendations(token);
+      } else {
+        showToast('Failed to update interests', 'error');
+      }
+    } catch (error) {
+      console.error('Update failed', error);
+      showToast('Failed to update interests', 'error');
+    }
+  };
+
+  const toggleInterest = (category) => {
+    setSelectedInterests(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
   // Derived stats
   // Derived stats
   const registeredEvents = myRegistrations.filter(reg => reg.status === 'approved').map(reg => ({
@@ -974,15 +1013,55 @@ export default function StudentDashboard() {
               >
                 <div className={`absolute inset-0 bg-gradient-to-r ${darkMode ? 'from-purple-600/20 via-pink-600/20 to-red-600/20' : 'from-purple-400/30 via-pink-400/30 to-red-400/30'} blur-3xl opacity-50`}></div>
                 <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Star className="w-8 h-8 text-yellow-400 fill-yellow-400" />
-                    <h1 className={`text-4xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                      Events Just For You
-                    </h1>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-3">
+                      <Star className="w-8 h-8 text-yellow-400 fill-yellow-400" />
+                      <h1 className={`text-4xl font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                        Events Just For You
+                      </h1>
+                    </div>
+                    <button
+                      onClick={() => setEditingInterests(!editingInterests)}
+                      className={`px-4 py-2 rounded-xl font-bold transition-all text-white ${darkMode ? 'bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20' : 'bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-200'}`}
+                    >
+                      {editingInterests ? 'Cancel' : 'Edit Interests'}
+                    </button>
                   </div>
                   <p className={`text-lg ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                     AI-powered recommendations based on your interests and skills
                   </p>
+
+                  {editingInterests && (
+                    <div className={`mt-6 p-6 rounded-2xl ${darkMode ? 'bg-white/5 border border-white/10' : 'bg-white/80 border border-slate-200'}`}>
+                      <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Select Your Interests</h3>
+                      <div className="flex flex-wrap gap-3 mb-4">
+                        {availableCategories.map(category => (
+                          <button
+                            key={category}
+                            onClick={() => toggleInterest(category)}
+                            className={`px-4 py-2 rounded-xl font-semibold transition-all ${selectedInterests.includes(category)
+                              ? 'bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/30'
+                              : darkMode
+                                ? 'bg-white/10 text-slate-300 hover:bg-white/20'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                              }`}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleSaveInterests}
+                        disabled={selectedInterests.length === 0}
+                        className={`px-6 py-3 rounded-xl font-bold transition-all ${selectedInterests.length === 0
+                          ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-lg hover:shadow-green-500/30'
+                          }`}
+                      >
+                        Save Interests
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
 
@@ -1025,72 +1104,89 @@ export default function StudentDashboard() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
-                        whileHover={{ y: -5 }}
-                        className={`relative group rounded-2xl overflow-hidden border cursor-pointer transition-all ${darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20' : 'bg-white border-slate-200 shadow-lg hover:shadow-xl'}`}
+                        whileHover={{ y: -10 }}
+                        className={`group relative rounded-3xl overflow-hidden border backdrop-blur-sm transition-all duration-300 ${darkMode ? 'bg-white/5 border-white/10 hover:shadow-2xl hover:shadow-purple-900/20' : 'bg-white border-slate-100 hover:shadow-2xl hover:shadow-slate-200'}`}
                         onClick={() => setSelectedEvent(event)}
                       >
-                        {/* Match Badge */}
-                        <div className="absolute top-4 right-4 z-20 bg-gradient-to-r from-pink-600 to-orange-600 text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1">
-                          <Star className="w-4 h-4 fill-current" />
-                          {event.matchScore}%
-                        </div>
-
-                        {/* Event Image */}
-                        <div className="relative h-48 overflow-hidden">
-                          <img
-                            src={event.image}
-                            alt={event.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          />
-                          <div className={`absolute inset-0 bg-gradient-to-t ${darkMode ? 'from-slate-900 via-transparent to-transparent' : 'from-black/40 via-transparent to-transparent'}`}></div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="p-4 space-y-3">
-                          <div>
-                            <p className={`text-xs font-semibold mb-1 uppercase tracking-wide ${event.category === 'Technology' ? 'text-blue-400' : event.category === 'Sports' ? 'text-red-400' : 'text-purple-400'}`}>
+                        {/* Card Header: Category & Score */}
+                        <div className="px-5 pt-5 pb-3 flex justify-between items-start">
+                          <div className="flex gap-2 flex-wrap">
+                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 ${darkMode ? 'bg-white/10 border-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                               {event.category}
-                            </p>
-                            <h3 className={`font-bold text-lg leading-tight line-clamp-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                              {event.title}
-                            </h3>
+                            </span>
                           </div>
 
-                          {/* Match Reasons */}
-                          <div className="space-y-1">
-                            {event.matchReasons?.slice(0, 2).map((reason, i) => (
-                              <p key={i} className={`text-xs leading-relaxed flex items-start gap-2 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                <Check className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-400" />
-                                <span>{reason}</span>
-                              </p>
-                            ))}
+                          <div className="flex items-center gap-2">
+                            {/* Match Score Chip */}
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center gap-1 bg-gradient-to-r from-pink-600 to-orange-600 text-white border-white/10">
+                              <Star size={12} fill="currentColor" /> {event.matchScore}%
+                            </span>
+
+                            {/* Favorite Button */}
+                            <button
+                              onClick={(e) => handleToggleFavorite(e, event._id)}
+                              className={`p-2 rounded-full transition-all ${favorites.includes(event._id) ? "text-pink-500 bg-pink-500/10" : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"}`}
+                            >
+                              <Heart size={20} fill={favorites.includes(event._id) ? "currentColor" : "none"} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Image Section */}
+                        <div className="relative h-56 overflow-hidden mx-5 rounded-2xl">
+                          <img src={event.image} alt={event.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
+
+                          {/* Hover Overlay Action */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            {isEventLive(event) && getRegistrationStatus(event._id) === 'approved' ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackEvent(event);
+                                  setShowFeedbackModal(true);
+                                }}
+                                className="px-6 py-3 rounded-full font-bold bg-white text-pink-600 shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50"
+                              >
+                                <MessageSquare size={18} /> Give Feedback
+                              </button>
+                            ) : (
+                              <button className="px-6 py-3 rounded-full font-bold bg-white text-black shadow-xl transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 flex items-center gap-2 hover:bg-slate-50">
+                                {getRegistrationStatus(event._id) === 'approved' ? 'View Ticket' : 'View Details'} <ArrowRight size={18} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Content Section */}
+                        <div className="p-5">
+                          <div className="mb-3">
+                            <div className="flex justify-between items-start">
+                              <h3 className={`text-xl font-bold line-clamp-1 ${darkMode ? 'text-white' : 'text-slate-900'} group-hover:text-pink-500 transition-colors`}>{event.title}</h3>
+                              <span className={`text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-900'}`}>{event.price ? `₹${event.price}` : 'Free'}</span>
+                            </div>
+
+                            {/* Match Reasons - Unique to ForYou */}
+                            <div className="space-y-1 mt-2 mb-2">
+                              {event.matchReasons?.slice(0, 2).map((reason, i) => (
+                                <p key={i} className={`text-xs leading-relaxed flex items-start gap-2 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                  <Check className="w-3 h-3 mt-0.5 flex-shrink-0 text-green-400" />
+                                  <span>{reason}</span>
+                                </p>
+                              ))}
+                            </div>
                           </div>
 
-                          {/* Event Info */}
-                          <div className={`flex items-center gap-3 text-xs font-medium border-t pt-3 ${darkMode ? 'border-white/10 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
-                            <div className="flex items-center gap-1">
+                          <div className="flex items-center justify-between pt-3 border-t border-dashed border-slate-200 dark:border-white/10">
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
                               <Calendar size={14} className="text-pink-500" />
                               <span>{new Date(event.date).toLocaleDateString()}</span>
                             </div>
-                            <div className="flex items-center gap-1 flex-1">
-                              <Users size={14} className="text-orange-500" />
-                              <span className="truncate">{event.registeredCount}/{event.totalSeats} registered</span>
+                            <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                              <MapPin size={14} className="text-orange-500" />
+                              <span className="truncate max-w-[120px]">{event.location}</span>
                             </div>
                           </div>
-
-                          {/* Register Button */}
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRegisterClick(event);
-                            }}
-                            disabled={event.registeredUsers?.includes(user._id)}
-                            className="w-full mt-2 py-2.5 bg-gradient-to-r from-pink-600 to-orange-600 hover:from-pink-700 hover:to-orange-700 text-white rounded-lg font-semibold transition disabled:opacity-50"
-                          >
-                            {event.registeredUsers?.includes(user._id) ? 'Already Registered' : 'Register Now'}
-                          </motion.button>
                         </div>
                       </motion.div>
                     ))}
@@ -1197,121 +1293,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* For You View */}
-          {currentView === "foryou" && (() => {
-            const userInterests = user.interests && user.interests.length > 0 ? user.interests : ['Technology', 'Workshop'];
-            const availableCategories = [
-              "Technology", "Sports", "Cultural", "Academic", "Business", "Workshop",
-              "Music", "Arts", "Robotics", "Public Speaking", "Debate", "Photography",
-              "Film Making", "Dance", "Drama/Theatre", "Entrepreneurship", "AI/Machine Learning",
-              "Cybersecurity", "Gaming/Esports", "Environment", "Social Service",
-              "Literature/Writing", "Design/UI-UX"
-            ];
 
-            const handleSaveInterests = async () => {
-              try {
-                const res = await fetch(`/api/users/${user._id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ interests: selectedInterests })
-                });
-                if (res.ok) {
-                  setUser({ ...user, interests: selectedInterests });
-                  setEditingInterests(false);
-                  showToast('Interests updated successfully!', 'success');
-                } else {
-                  showToast('Failed to update interests', 'error');
-                }
-              } catch (error) {
-                console.error('Update failed', error);
-                showToast('Failed to update interests', 'error');
-              }
-            };
-
-            const toggleInterest = (category) => {
-              setSelectedInterests(prev =>
-                prev.includes(category)
-                  ? prev.filter(c => c !== category)
-                  : [...prev, category]
-              );
-            };
-
-            const getMatchPercentage = (event) => {
-              if (!userInterests || userInterests.length === 0) return 0;
-
-              // Normalize for case-insensitive comparison
-              const normalizedUserInterests = userInterests.map(i => i.toLowerCase());
-              const eventTags = (event.tags || []).map(t => t.toLowerCase());
-              const category = (event.category || '').toLowerCase();
-
-              // Check for matches
-              const matchingInterests = normalizedUserInterests.filter(interest =>
-                eventTags.includes(interest) || // Match against tags
-                category === interest ||        // Match against category
-                event.title.toLowerCase().includes(interest) || // Fallback: title
-                event.description.toLowerCase().includes(interest) // Fallback: description
-              );
-
-              // Calculate percentage based on how many USER interests are covered
-              const percentage = (matchingInterests.length / normalizedUserInterests.length) * 100;
-
-              return Math.min(100, Math.round(percentage));
-            };
-            const recommendedEvents = events.map(event => ({ ...event, matchPercentage: getMatchPercentage(event) })).filter(event => event.matchPercentage > 0 && event.status === 'active').sort((a, b) => b.matchPercentage - a.matchPercentage);
-            return (
-              <div>
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className={`relative overflow-hidden rounded-3xl p-10 border shadow-2xl mb-8 ${darkMode ? 'bg-white/5 border-white/10 shadow-black/20' : 'bg-white/60 border-white/40 shadow-slate-200/50'}`}>
-                  <div className={`absolute inset-0 bg-gradient-to-r ${darkMode ? 'from-pink-600/20 via-purple-600/20 to-orange-600/20' : 'from-pink-400/30 via-purple-400/30 to-orange-400/30'} blur-3xl opacity-50`}></div>
-                  <div className="relative z-10">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h1 className={`text-3xl md:text-5xl font-bold bg-gradient-to-r ${darkMode ? 'from-white via-pink-200 to-orange-200' : 'from-slate-900 via-purple-800 to-slate-900'} bg-clip-text text-transparent mb-4 tracking-tight`}>✨ Recommended For You</h1>
-                        <p className={`text-lg md:text-xl ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>Based on your interests: {userInterests.join(', ')}</p>
-                      </div>
-                      <button
-                        onClick={() => setEditingInterests(!editingInterests)}
-                        className={`px-4 py-2 rounded-xl font-bold transition-all ${darkMode ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'}`}
-                      >
-                        {editingInterests ? 'Cancel' : 'Edit Interests'}
-                      </button>
-                    </div>
-
-                    {editingInterests && (
-                      <div className={`mt-6 p-6 rounded-2xl ${darkMode ? 'bg-white/5 border border-white/10' : 'bg-white/80 border border-slate-200'}`}>
-                        <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Select Your Interests</h3>
-                        <div className="flex flex-wrap gap-3 mb-4">
-                          {availableCategories.map(category => (
-                            <button
-                              key={category}
-                              onClick={() => toggleInterest(category)}
-                              className={`px-4 py-2 rounded-xl font-semibold transition-all ${selectedInterests.includes(category)
-                                ? 'bg-gradient-to-r from-pink-600 to-orange-600 text-white shadow-lg shadow-pink-500/30'
-                                : darkMode
-                                  ? 'bg-white/10 text-slate-300 hover:bg-white/20'
-                                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                }`}
-                            >
-                              {category}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          onClick={handleSaveInterests}
-                          disabled={selectedInterests.length === 0}
-                          className={`px-6 py-3 rounded-xl font-bold transition-all ${selectedInterests.length === 0
-                            ? 'bg-slate-500/20 text-slate-500 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-lg hover:shadow-green-500/30'
-                            }`}
-                        >
-                          Save Interests
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              </div>
-            );
-          })()}
 
           {/* Minimal Placeholder for other views to keep code short for now */}
           {currentView === "calendar" && (
