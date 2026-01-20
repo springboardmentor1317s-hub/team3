@@ -53,7 +53,9 @@ export default function AdminDashboard() {
     totalEvents: 0,
     activeUsers: 0,
     totalRegistrations: 0,
-    pendingApprovals: 0
+    totalRegistrations: 0,
+    pendingApprovals: 0,
+    averageRating: 0
   });
   const [eventsList, setEventsList] = useState([]);
 
@@ -312,7 +314,15 @@ export default function AdminDashboard() {
       trend: "alert",
       onClick: () => { setCurrentView("events"); setFilterStatus("pending"); setFilterMyEvents(true); }
     },
-
+    {
+      icon: Star,
+      label: "Average Rating",
+      value: statsData.averageRating || "0",
+      change: "Based on reviews",
+      color: "yellow",
+      trend: "neutral",
+      onClick: () => setCurrentView("reviews")
+    }
   ];
 
   // Group Registrations by Event
@@ -845,9 +855,7 @@ export default function AdminDashboard() {
                       <div className="relative z-10">
                         <h3 className={`text-4xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stat.value}</h3>
                         <div className="flex items-center gap-2 text-sm">
-                          <span className="text-green-500 flex items-center gap-1 font-medium bg-green-500/10 px-2 py-0.5 rounded-lg">
-                            <TrendingUp size={12} /> {stat.trend === 'up' ? '+' : ''}12%
-                          </span>
+
                           <span className={darkMode ? 'text-slate-500' : 'text-slate-400'}>{stat.change}</span>
                         </div>
                       </div>

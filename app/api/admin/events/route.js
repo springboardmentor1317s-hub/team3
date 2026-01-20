@@ -21,8 +21,9 @@ export async function GET(request) {
     const token = authHeader.split(' ')[1];
 
     // Verify token
+    let decoded;
     try {
-      jwt.verify(token, JWT_SECRET);
+      decoded = jwt.verify(token, JWT_SECRET);
     } catch (err) {
       return NextResponse.json(
         { error: 'Not authorized, token failed' },
@@ -44,7 +45,15 @@ export async function GET(request) {
     //   { $set: { status: 'completed' } }
     // );
 
-    const events = await Event.find()
+    // User-scoped filtering (Multi-ID support)
+    const currentUser = await User.findById(decoded.id);
+    let myUserIds = [decoded.id];
+    if (currentUser && currentUser.email) {
+      const usersWithSameEmail = await User.find({ email: currentUser.email }).select('_id');
+      myUserIds = usersWithSameEmail.map(u => u._id);
+    }
+
+    const events = await Event.find({ createdBy: { $in: myUserIds } })
       .populate('createdBy', 'fullName email')
       .sort({ createdAt: -1 });
 
