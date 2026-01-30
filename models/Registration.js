@@ -14,7 +14,11 @@ const RegistrationSchema = new mongoose.Schema(
         },
         status: {
             type: String,
+<<<<<<< HEAD
             enum: ['pending', 'approved', 'rejected'],
+=======
+            enum: ['pending', 'approved', 'rejected', 'cancelled'],
+>>>>>>> main
             default: 'pending',
         },
         teamName: {

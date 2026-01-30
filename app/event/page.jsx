@@ -22,7 +22,11 @@ export default function EventPage() {
   const fetchEvents = async () => {
     try {
       console.log("Fetching events...");
+<<<<<<< HEAD
       const res = await fetch("/api/events");
+=======
+      const res = await fetch("/api/events?status=active");
+>>>>>>> main
       console.log("Fetch response status:", res.status);
 
       if (res.ok) {

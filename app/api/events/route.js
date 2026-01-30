@@ -9,13 +9,21 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+<<<<<<< HEAD
     const status = searchParams.get('status') || 'active';
+=======
+    const status = searchParams.get('status');
+>>>>>>> main
 
     let query = {};
     if (category && category !== 'all') {
       query.category = category;
     }
+<<<<<<< HEAD
     if (status) {
+=======
+    if (status && status !== 'all') {
+>>>>>>> main
       query.status = status;
     }
 

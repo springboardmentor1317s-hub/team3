@@ -21,8 +21,14 @@ export async function GET(request) {
     const token = authHeader.split(' ')[1];
 
     // Verify token
+<<<<<<< HEAD
     try {
       jwt.verify(token, JWT_SECRET);
+=======
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+>>>>>>> main
     } catch (err) {
       return NextResponse.json(
         { error: 'Not authorized, token failed' },
@@ -44,7 +50,19 @@ export async function GET(request) {
     //   { $set: { status: 'completed' } }
     // );
 
+<<<<<<< HEAD
     const events = await Event.find()
+=======
+    // User-scoped filtering (Multi-ID support)
+    const currentUser = await User.findById(decoded.id);
+    let myUserIds = [decoded.id];
+    if (currentUser && currentUser.email) {
+      const usersWithSameEmail = await User.find({ email: currentUser.email }).select('_id');
+      myUserIds = usersWithSameEmail.map(u => u._id);
+    }
+
+    const events = await Event.find({ createdBy: { $in: myUserIds } })
+>>>>>>> main
       .populate('createdBy', 'fullName email')
       .sort({ createdAt: -1 });
 
@@ -71,21 +89,37 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
+<<<<<<< HEAD
     const { title, description, category, date, time, location, college, totalSeats, registrationStartDate, registrationEndDate, teamSizeMin, teamSizeMax, image } = await request.json();
+=======
+    const { title, description, category, tags, date, time, startTime, endTime, location, college, totalSeats, registrationStartDate, registrationEndDate, teamSizeMin, teamSizeMax, image } = await request.json();
+>>>>>>> main
 
     const event = await Event.create({
       title,
       description,
       category,
+<<<<<<< HEAD
       date,
       time,
+=======
+      tags: tags || [],
+      date,
+      time,
+      startTime,
+      endTime,
+>>>>>>> main
       location: location || 'To Be Announced',
       college,
       totalSeats: totalSeats || 100,
       teamSizeMin: teamSizeMin || 1,
       teamSizeMax: teamSizeMax || 1,
       createdBy: userId, // Securely set from token
+<<<<<<< HEAD
       status: 'pending',
+=======
+      status: 'active',
+>>>>>>> main
       registrationStartDate: registrationStartDate || undefined,
       registrationEndDate: registrationEndDate || undefined,
       image: image || undefined,

@@ -41,12 +41,32 @@ const UserSchema = new mongoose.Schema(
         ref: 'Event',
       },
     ],
+<<<<<<< HEAD
+=======
+    interests: [
+      {
+        type: String,
+      },
+    ],
+>>>>>>> main
     favorites: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Event',
       },
     ],
+<<<<<<< HEAD
+=======
+    skills: [
+      {
+        type: String,
+      },
+    ],
+    profileBio: {
+      type: String,
+      default: '',
+    },
+>>>>>>> main
   },
   { timestamps: true }
 );

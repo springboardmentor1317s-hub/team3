@@ -1,5 +1,9 @@
 import connectDB from '@/lib/mongodb';
 import Event from '@/models/Event';
+<<<<<<< HEAD
+=======
+import User from '@/models/User';
+>>>>>>> main
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 
@@ -30,9 +34,21 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
+<<<<<<< HEAD
     // Enforce ownership
     if (event.createdBy.toString() !== userId) {
       return NextResponse.json({ error: 'Not authorized to edit this event' }, { status: 403 });
+=======
+    // Enforce ownership (ID or Email)
+    if (event.createdBy.toString() !== userId) {
+      // Fallback: Check email
+      const creator = await User.findById(event.createdBy);
+      const currentUser = await User.findById(userId);
+
+      if (!creator || !currentUser || creator.email !== currentUser.email) {
+        return NextResponse.json({ error: 'Not authorized to edit this event' }, { status: 403 });
+      }
+>>>>>>> main
     }
 
     const updatedEvent = await Event.findByIdAndUpdate(id, updateData, { new: true });
@@ -58,9 +74,21 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
+<<<<<<< HEAD
     // Enforce ownership
     if (event.createdBy.toString() !== userId) {
       return NextResponse.json({ error: 'Not authorized to delete this event' }, { status: 403 });
+=======
+    // Enforce ownership (ID or Email)
+    if (event.createdBy.toString() !== userId) {
+      // Fallback: Check email
+      const creator = await User.findById(event.createdBy);
+      const currentUser = await User.findById(userId);
+
+      if (!creator || !currentUser || creator.email !== currentUser.email) {
+        return NextResponse.json({ error: 'Not authorized to delete this event' }, { status: 403 });
+      }
+>>>>>>> main
     }
 
     await Event.findByIdAndDelete(id);

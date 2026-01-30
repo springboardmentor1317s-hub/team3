@@ -18,7 +18,12 @@
     "next-auth": "^4.24.13",
     "qrcode.react": "^4.2.0",
     "react": "19.2.1",
+<<<<<<< HEAD
     "react-dom": "19.2.1"
+=======
+    "react-dom": "19.2.1",
+    "recharts": "^3.6.0"
+>>>>>>> main
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
